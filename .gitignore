@@ -1,0 +1,17 @@
+## Build output
+bin/
+obj/
+artifacts/
+
+## Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+secrets.json
+
+## IDE
+.vs/
+.idea/
+*.user
+*.suo
