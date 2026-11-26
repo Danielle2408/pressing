@@ -10,12 +10,7 @@ namespace Pressing.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateIndex(
-                name: "IX_CustomerAddresses_CustomerId",
-                table: "CustomerAddresses",
-                column: "CustomerId",
-                unique: true,
-                filter: "\"IsActive\" AND \"IsDefault\"");
+            migrationBuilder.Sql("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_CustomerAddresses_CustomerId\" ON \"CustomerAddresses\" (\"CustomerId\") WHERE \"IsActive\" AND \"IsDefault\";");
         }
 
         /// <inheritdoc />
