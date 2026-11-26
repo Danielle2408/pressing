@@ -1,0 +1,62 @@
+@model AdminUserListViewModel
+@{
+    ViewData["Title"] = "Utilisateurs";
+}
+
+<section class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div><span class="text-primary fw-semibold small text-uppercase">Administration</span><h1 class="display-6 fw-bold mt-2 mb-0">Utilisateurs</h1></div>
+        <a asp-action="Creer" class="btn btn-primary">Créer un compte du personnel</a>
+    </div>
+    @if (TempData["UsersSuccess"] is string success) { <div class="alert alert-success" role="status">@success</div> }
+    @if (TempData["UsersError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-4">
+            <label class="visually-hidden" for="role">Filtrer par rôle</label>
+            <select class="form-select" id="role" name="role">
+                <option value="">Tous les rôles</option>
+                @foreach (var role in Roles.All)
+                {
+                    if (Model.Role == role) { <option value="@role" selected>@role</option> }
+                    else { <option value="@role">@role</option> }
+                }
+            </select>
+        </div>
+        <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Filtrer</button></div>
+    </form>
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Nom</th><th>Contact</th><th>Rôle</th><th>État</th><th>Créé le</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+            @if (Model.Users.Count == 0) { <tr><td colspan="6" class="text-center text-secondary py-5">Aucun compte trouvé.</td></tr> }
+            @foreach (var row in Model.Users)
+            {
+                <tr>
+                    <td class="fw-semibold">@row.User.FullName</td>
+                    <td>@row.User.Email<br /><span class="small text-secondary">@row.User.PhoneNumber</span></td>
+                    <td>@row.Role</td>
+                    <td>@if (row.User.IsActive) { <span class="badge text-bg-success">Actif</span> } else { <span class="badge text-bg-secondary">Désactivé</span> }</td>
+                    <td>@row.User.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td class="text-end">
+                        @if (row.Role is Roles.Administrator or Roles.Operator)
+                        {
+                            <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
+                                <a asp-action="Modifier" asp-route-id="@row.User.Id" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                <a asp-action="ReinitialiserMotDePasse" asp-route-id="@row.User.Id" class="btn btn-sm btn-outline-secondary">Réinitialiser le mot de passe</a>
+                                <form asp-action="BasculerActivation" method="post">
+                                    <input type="hidden" name="id" value="@row.User.Id" />
+                                    <button type="submit" class="btn btn-sm @(row.User.IsActive ? "btn-outline-danger" : "btn-outline-success")">@(row.User.IsActive ? "Désactiver" : "Réactiver")</button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
+                            <a asp-action="Modifier" asp-route-id="@row.User.Id" class="btn btn-sm btn-outline-primary">Modifier</a>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    </div>
+</section>

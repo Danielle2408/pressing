@@ -31,6 +31,9 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="CatalogueAdmin" asp-action="Index">Administration</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="AdministrationUtilisateurs" asp-action="Index">Utilisateurs</a>
+                            </li>
                         }
                         @if (User.IsInRole("Administrateur") || User.IsInRole("Operateur"))
                         {

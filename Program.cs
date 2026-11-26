@@ -32,6 +32,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Compte/Connexion";
     options.AccessDeniedPath = "/Compte/AccesRefuse";
 });
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.Zero);
 
 builder.Services.AddAuthorization(options =>
 {

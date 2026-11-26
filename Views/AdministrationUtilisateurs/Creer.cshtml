@@ -1,0 +1,22 @@
+@model CreateStaffUserViewModel
+@{
+    ViewData["Title"] = "Créer un utilisateur";
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour aux utilisateurs</a>
+    <div class="mt-3 mb-4"><span class="text-primary fw-semibold small text-uppercase">Administration</span><h1 class="display-6 fw-bold mt-2">Créer un compte du personnel</h1></div>
+    <div class="card border-0 shadow-sm"><div class="card-body p-4">
+        <form asp-action="Creer" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div class="row g-3">
+                <div class="col-md-6"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="Role" class="form-label"></label><select asp-for="Role" class="form-select"><option value="Operateur">Opérateur</option><option value="Administrateur">Administrateur</option></select><span asp-validation-for="Role" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" type="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="PhoneNumber" class="form-label"></label><input asp-for="PhoneNumber" class="form-control" type="tel" /><span asp-validation-for="PhoneNumber" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="TemporaryPassword" class="form-label"></label><input asp-for="TemporaryPassword" class="form-control" /><div class="form-text">Au moins 10 caractères, avec majuscule et chiffre selon la politique de sécurité.</div><span asp-validation-for="TemporaryPassword" class="text-danger"></span></div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-4">Créer le compte</button>
+        </form>
+    </div></div>
+</section>
