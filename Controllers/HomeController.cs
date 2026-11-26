@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using pressing_app.Models;
+using Pressing.Models;
 
-namespace pressing_app.Controllers;
+namespace Pressing.Controllers;
 
 public class HomeController : Controller
 {

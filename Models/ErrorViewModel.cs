@@ -1,4 +1,4 @@
-namespace pressing_app.Models;
+namespace Pressing.Models;
 
 public class ErrorViewModel
 {

@@ -26,6 +26,11 @@ builder.Services
 
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
     .AddIdentityCookies();
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Compte/Connexion";
+    options.AccessDeniedPath = "/Compte/AccesRefuse";
+});
 
 builder.Services.AddAuthorization(options =>
 {
