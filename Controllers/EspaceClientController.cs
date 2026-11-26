@@ -17,7 +17,8 @@ namespace Pressing.Controllers;
 public sealed class EspaceClientController(
     ApplicationDbContext database,
     IOptions<OrderSettings> orderOptions,
-    UserManager<ApplicationUser> users) : Controller
+    UserManager<ApplicationUser> users,
+    SignInManager<ApplicationUser> signInManager) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
     [HttpGet]
@@ -36,6 +37,69 @@ public sealed class EspaceClientController(
             .ToListAsync();
 
         return View(new CustomerPortalViewModel { Customer = customer, Orders = orders });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Profil()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.AsNoTracking().FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        var user = await users.FindByIdAsync(userId ?? string.Empty);
+        if (customer is null || user is null) return NotFound();
+        return View(new CustomerProfileViewModel
+        {
+            FullName = customer.FullName, Address = customer.Address,
+            Email = user.Email ?? string.Empty, PhoneNumber = customer.PhoneNumber
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Profil(CustomerProfileViewModel model)
+    {
+        if (!ModelState.IsValid) return View(model);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        var user = await users.FindByIdAsync(userId ?? string.Empty);
+        if (customer is null || user is null) return NotFound();
+        customer.FullName = model.FullName.Trim();
+        customer.Address = string.IsNullOrWhiteSpace(model.Address) ? null : model.Address.Trim();
+        user.FullName = customer.FullName;
+        var result = await users.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
+            model.Email = user.Email ?? string.Empty;
+            model.PhoneNumber = customer.PhoneNumber;
+            return View(model);
+        }
+        await database.SaveChangesAsync();
+        TempData["ProfileSuccess"] = "Ton profil a été mis à jour.";
+        return RedirectToAction(nameof(Profil));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangerMotDePasse(ChangeCustomerPasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["PasswordError"] = "Vérifie les champs du nouveau mot de passe.";
+            return RedirectToAction(nameof(Profil));
+        }
+        var user = await users.GetUserAsync(User);
+        if (user is null) return Challenge();
+        var result = await users.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        if (!result.Succeeded)
+        {
+            TempData["PasswordError"] = result.Errors.Any(error => error.Code == "PasswordMismatch")
+                ? "Le mot de passe actuel est incorrect."
+                : string.Join(" ", result.Errors.Select(error => error.Description));
+            return RedirectToAction(nameof(Profil));
+        }
+        await signInManager.RefreshSignInAsync(user);
+        TempData["ProfileSuccess"] = "Ton mot de passe a été changé.";
+        return RedirectToAction(nameof(Profil));
     }
 
     [HttpGet]

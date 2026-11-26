@@ -1,0 +1,31 @@
+@model CustomerProfileViewModel
+@{
+    ViewData["Title"] = "Mon profil";
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour à mon espace</a>
+    <div class="mt-3 mb-4"><span class="text-primary fw-semibold small text-uppercase">Espace client</span><h1 class="display-6 fw-bold mt-2">Mon profil</h1></div>
+    @if (TempData["ProfileSuccess"] is string success) { <div class="alert alert-success" role="status">@success</div> }
+    @if (TempData["PasswordError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    <div class="row g-4">
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5">Informations personnelles</h2>
+            <form asp-action="Profil" method="post" class="mt-3">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                <div class="mb-3"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="text-danger"></span></div>
+                <div class="mb-3"><label class="form-label" for="profile-email">Adresse e-mail</label><input id="profile-email" class="form-control" value="@Model.Email" readonly /><div class="form-text">Contacte le pressing si tu dois changer d’adresse e-mail.</div></div>
+                <div class="mb-3"><label class="form-label" for="profile-phone">Téléphone</label><input id="profile-phone" class="form-control" value="@Model.PhoneNumber" readonly /><div class="form-text">Le téléphone est utilisé pour la connexion. Il ne peut pas être changé sans vérification.</div></div>
+                <div class="mb-3"><label asp-for="Address" class="form-label"></label><textarea asp-for="Address" class="form-control" rows="3" maxlength="400"></textarea><span asp-validation-for="Address" class="text-danger"></span></div>
+                <button type="submit" class="btn btn-primary">Enregistrer le profil</button>
+            </form>
+        </div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5">Changer le mot de passe</h2>
+            <form asp-action="ChangerMotDePasse" method="post" class="mt-3">
+                <div class="mb-3"><label class="form-label" for="CurrentPassword">Mot de passe actuel</label><input class="form-control" id="CurrentPassword" name="CurrentPassword" type="password" autocomplete="current-password" required /></div>
+                <div class="mb-3"><label class="form-label" for="NewPassword">Nouveau mot de passe</label><input class="form-control" id="NewPassword" name="NewPassword" type="password" minlength="10" autocomplete="new-password" required /><div class="form-text">Au moins 10 caractères, avec une majuscule et un chiffre.</div></div>
+                <div class="mb-3"><label class="form-label" for="ConfirmPassword">Confirmer le nouveau mot de passe</label><input class="form-control" id="ConfirmPassword" name="ConfirmPassword" type="password" minlength="10" autocomplete="new-password" required /></div>
+                <button type="submit" class="btn btn-outline-primary">Changer le mot de passe</button>
+            </form>
+        </div></div></div>
+    </div>
+</section>
