@@ -11,6 +11,20 @@ public sealed class CustomerPortalViewModel
 public sealed class CustomerOrderDetailsViewModel
 {
     public LaundryOrder Order { get; init; } = null!;
+    public IReadOnlyList<CustomerClaim> Claims { get; init; } = [];
+}
+
+public sealed class CustomerClaimCreateViewModel
+{
+    public int OrderId { get; set; }
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(2000, MinimumLength = 10)]
+    public string Description { get; set; } = string.Empty;
+}
+
+public sealed class CustomerClaimsListViewModel
+{
+    public IReadOnlyList<CustomerClaim> Claims { get; init; } = [];
 }
 
 public sealed class CustomerOrderRequestViewModel

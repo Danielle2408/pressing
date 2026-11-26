@@ -19,6 +19,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<CustomerClaim> CustomerClaims => Set<CustomerClaim>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -191,6 +192,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.ToTable(table => table.HasCheckConstraint("CK_StockMovements_Quantity_Positive", "\"Quantity\" > 0"));
             entity.HasOne(item => item.InventoryItem).WithMany(item => item.Movements).HasForeignKey(item => item.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.User).WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CustomerClaim>(entity =>
+        {
+            entity.Property(item => item.Description).HasMaxLength(2000).IsRequired();
+            entity.Property(item => item.Decision).HasMaxLength(2000);
+            entity.Property(item => item.Status).HasConversion<string>().HasMaxLength(24);
+            entity.HasIndex(item => new { item.LaundryOrderId, item.CreatedAtUtc });
+            entity.HasIndex(item => new { item.CustomerId, item.CreatedAtUtc });
+            entity.HasOne(item => item.LaundryOrder).WithMany(order => order.Claims).HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.CreatedByUser).WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.ResolvedByUser).WithMany().HasForeignKey(item => item.ResolvedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

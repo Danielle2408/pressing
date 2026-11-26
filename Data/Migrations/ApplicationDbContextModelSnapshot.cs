@@ -322,6 +322,60 @@ namespace Pressing.Data.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("Pressing.Models.CustomerClaim", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Decision")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("LaundryOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("CustomerId", "CreatedAtUtc");
+
+                    b.HasIndex("LaundryOrderId", "CreatedAtUtc");
+
+                    b.ToTable("CustomerClaims");
+                });
+
             modelBuilder.Entity("Pressing.Models.Expense", b =>
                 {
                     b.Property<int>("Id")
@@ -909,6 +963,40 @@ namespace Pressing.Data.Migrations
                     b.Navigation("ApplicationUser");
                 });
 
+            modelBuilder.Entity("Pressing.Models.CustomerClaim", b =>
+                {
+                    b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
+                        .WithMany("Claims")
+                        .HasForeignKey("LaundryOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.ApplicationUser", "ResolvedByUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("LaundryOrder");
+
+                    b.Navigation("ResolvedByUser");
+                });
+
             modelBuilder.Entity("Pressing.Models.Expense", b =>
                 {
                     b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
@@ -1050,6 +1138,8 @@ namespace Pressing.Data.Migrations
 
             modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
                 {
+                    b.Navigation("Claims");
+
                     b.Navigation("Lines");
 
                     b.Navigation("Payments");

@@ -12,6 +12,8 @@
     {
         <div class="alert alert-success mt-3" role="status">@requestSuccess</div>
     }
+    @if (TempData["ClaimSuccess"] is string claimSuccess) { <div class="alert alert-success mt-3" role="status">@claimSuccess</div> }
+    @if (TempData["ClaimError"] is string claimError) { <div class="alert alert-danger mt-3" role="alert">@claimError</div> }
     @if (order.Status == OrderStatus.PendingConfirmation)
     {
         <div class="alert alert-info mt-3">Ta demande attend la confirmation du pressing. Le montant affiché est une estimation.</div>
@@ -68,6 +70,32 @@
                             <div class="small text-secondary">@history.ChangedAtUtc.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")</div>
                         </div>
                     }
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body p-4">
+                    <h2 class="h5">Réclamations</h2>
+                    @if (Model.Claims.Count == 0) { <p class="text-secondary mt-3">Aucune réclamation pour cette commande.</p> }
+                    @foreach (var claim in Model.Claims)
+                    {
+                        <div class="border rounded p-3 mt-3">
+                            <div class="d-flex justify-content-between gap-2"><strong>@claim.Status.ToFrench()</strong><span class="small text-secondary">@claim.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</span></div>
+                            <p class="mt-2 mb-0">@claim.Description</p>
+                            @if ((claim.Status is ClaimStatus.Resolved or ClaimStatus.Rejected) && !string.IsNullOrWhiteSpace(claim.Decision))
+                            {
+                                <div class="alert alert-light border mt-3 mb-0"><strong>Décision :</strong> @claim.Decision</div>
+                            }
+                        </div>
+                    }
+                    <hr class="my-4" />
+                    <h3 class="h6">Déclarer un problème</h3>
+                    <form asp-action="Reclamer" method="post" class="mt-3">
+                        <input type="hidden" name="OrderId" value="@order.Id" />
+                        <label class="form-label" for="claim-description">Description (10 à 2 000 caractères)</label>
+                        <textarea class="form-control" id="claim-description" name="Description" rows="4" minlength="10" maxlength="2000" required></textarea>
+                        <button type="submit" class="btn btn-outline-primary mt-3">Envoyer la réclamation</button>
+                    </form>
                 </div>
             </div>
         </div>

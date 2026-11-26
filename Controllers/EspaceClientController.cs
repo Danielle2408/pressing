@@ -167,10 +167,38 @@ public sealed class EspaceClientController(ApplicationDbContext database, IOptio
             .Include(item => item.Lines)
             .Include(item => item.StatusHistory)
             .Include(item => item.Payments)
+            .Include(item => item.Claims).ThenInclude(claim => claim.ResolvedByUser)
             .Where(item => item.Id == id && item.Customer.ApplicationUserId == userId)
             .FirstOrDefaultAsync();
 
-        return order is null ? NotFound() : View(new CustomerOrderDetailsViewModel { Order = order });
+        return order is null ? NotFound() : View(new CustomerOrderDetailsViewModel
+        {
+            Order = order, Claims = order.Claims.OrderByDescending(claim => claim.CreatedAtUtc).ToList()
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reclamer(CustomerClaimCreateViewModel model)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
+        var ownsOrder = await database.LaundryOrders.AnyAsync(order => order.Id == model.OrderId && order.CustomerId == customer.Id);
+        if (!ownsOrder) return NotFound();
+        if (!ModelState.IsValid)
+        {
+            TempData["ClaimError"] = "La description doit contenir entre 10 et 2 000 caractères.";
+            return RedirectToAction(nameof(Details), new { id = model.OrderId });
+        }
+        database.CustomerClaims.Add(new CustomerClaim
+        {
+            LaundryOrderId = model.OrderId, CustomerId = customer.Id, Description = model.Description.Trim(),
+            CreatedByUserId = userId!, CreatedAtUtc = DateTime.UtcNow, Status = ClaimStatus.Open
+        });
+        await database.SaveChangesAsync();
+        TempData["ClaimSuccess"] = "Ta réclamation a été transmise à l’équipe du pressing.";
+        return RedirectToAction(nameof(Details), new { id = model.OrderId });
     }
 
     [HttpPost]

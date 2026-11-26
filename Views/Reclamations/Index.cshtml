@@ -1,0 +1,44 @@
+@model CustomerClaimsListViewModel
+@{
+    ViewData["Title"] = "Réclamations";
+}
+
+<section class="py-4">
+    <div class="mb-4"><span class="text-primary fw-semibold small text-uppercase">Service client</span><h1 class="display-6 fw-bold mt-2">Réclamations</h1></div>
+    @if (TempData["ClaimSuccess"] is string success) { <div class="alert alert-success" role="status">@success</div> }
+    @if (TempData["ClaimError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (Model.Claims.Count == 0) { <div class="card border-0 shadow-sm"><div class="card-body text-secondary">Aucune réclamation enregistrée.</div></div> }
+    <div class="d-grid gap-3">
+    @foreach (var claim in Model.Claims)
+    {
+        <article class="card border-0 shadow-sm"><div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+                <div><h2 class="h5 mb-1"><a asp-controller="Commandes" asp-action="Details" asp-route-id="@claim.LaundryOrderId" class="text-decoration-none">@claim.LaundryOrder.Number</a> · @claim.Customer.FullName</h2><div class="small text-secondary">Signalée le @claim.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy à HH:mm") par @claim.CreatedByUser.FullName</div></div>
+                <span class="badge rounded-pill text-bg-light border align-self-start">@claim.Status.ToFrench()</span>
+            </div>
+            <p class="mt-3 mb-0">@claim.Description</p>
+            @if (claim.Status is ClaimStatus.Resolved or ClaimStatus.Rejected)
+            {
+                <div class="alert alert-light border mt-3 mb-0"><strong>Décision (@claim.ResolvedByUser?.FullName) :</strong> @claim.Decision</div>
+            }
+            else
+            {
+                <form asp-action="Traiter" method="post" class="row g-2 align-items-end mt-3">
+                    <input type="hidden" name="id" value="@claim.Id" />
+                    @if (User.IsInRole(Roles.Administrator))
+                    {
+                        <div class="col-md-3"><label class="form-label" for="status-@claim.Id">Décision</label><select class="form-select" id="status-@claim.Id" name="status"><option value="UnderReview">En cours d’examen</option><option value="Resolved">Résolue</option><option value="Rejected">Rejetée</option></select></div>
+                        <div class="col-md-7"><label class="form-label" for="decision-@claim.Id">Note ou décision</label><input class="form-control" id="decision-@claim.Id" name="decision" maxlength="2000" /></div>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="status" value="UnderReview" />
+                        <div class="col-md-10"><label class="form-label" for="decision-@claim.Id">Note de prise en charge (facultatif)</label><input class="form-control" id="decision-@claim.Id" name="decision" maxlength="2000" /></div>
+                    }
+                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Enregistrer</button></div>
+                </form>
+            }
+        </div></article>
+    }
+    </div>
+</section>

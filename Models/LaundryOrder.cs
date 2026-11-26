@@ -28,4 +28,5 @@ public sealed class LaundryOrder
     public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
     public ICollection<OrderStatusHistory> StatusHistory { get; set; } = new List<OrderStatusHistory>();
     public ICollection<OrderPayment> Payments { get; set; } = new List<OrderPayment>();
+    public ICollection<CustomerClaim> Claims { get; set; } = new List<CustomerClaim>();
 }
