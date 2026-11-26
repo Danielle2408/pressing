@@ -15,6 +15,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<OrderPayment> OrderPayments => Set<OrderPayment>();
+    public DbSet<CashClosure> CashClosures => Set<CashClosure>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -144,6 +146,27 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.CreatedByUser).WithMany()
                 .HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CashClosure>(entity =>
+        {
+            entity.Property(item => item.ExpectedCash).HasPrecision(18, 2);
+            entity.Property(item => item.CountedCash).HasPrecision(18, 2);
+            entity.Property(item => item.OtherPayments).HasPrecision(18, 2);
+            entity.Property(item => item.Note).HasMaxLength(500);
+            entity.HasIndex(item => new { item.OperatorId, item.BusinessDate }).IsUnique();
+            entity.HasOne(item => item.Operator).WithMany().HasForeignKey(item => item.OperatorId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_CashClosures_Amounts_NonNegative", "\"ExpectedCash\" >= 0 AND \"CountedCash\" >= 0 AND \"OtherPayments\" >= 0"));
+        });
+
+        builder.Entity<Expense>(entity =>
+        {
+            entity.Property(item => item.Label).HasMaxLength(160).IsRequired();
+            entity.Property(item => item.Category).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Amount).HasPrecision(18, 2);
+            entity.HasIndex(item => item.SpentAtUtc);
+            entity.HasOne(item => item.CreatedByUser).WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_Expenses_Amount_Positive", "\"Amount\" > 0"));
         });
     }
 }

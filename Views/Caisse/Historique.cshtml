@@ -1,0 +1,19 @@
+@model CashClosureHistoryViewModel
+@{
+    ViewData["Title"] = "Historique des clôtures";
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour à la caisse</a>
+    <h1 class="display-6 fw-bold mt-3 mb-4">Historique des clôtures de caisse</h1>
+    <div class="card border-0 shadow-sm overflow-hidden"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Opérateur</th><th>Espèces attendues</th><th>Comptées</th><th>Écart</th><th>Autres paiements</th><th>Clôturée à</th></tr></thead>
+        <tbody>
+        @if (Model.Closures.Count == 0) { <tr><td colspan="7" class="text-center text-secondary py-5">Aucune clôture enregistrée.</td></tr> }
+        @foreach (var close in Model.Closures)
+        {
+            <tr><td>@close.BusinessDate.ToString("dd/MM/yyyy")</td><td>@close.Operator.FullName</td><td>@close.ExpectedCash.ToString("N0") FCFA</td><td>@close.CountedCash.ToString("N0") FCFA</td><td class="@(close.Variance == 0 ? "text-success" : "text-danger") fw-semibold">@close.Variance.ToString("N0") FCFA</td><td>@close.OtherPayments.ToString("N0") FCFA</td><td>@close.ClosedAtUtc.ToLocalTime().ToString("HH:mm")</td></tr>
+        }
+        </tbody>
+    </table></div></div>
+</section>
