@@ -1,0 +1,53 @@
+@model OrderLabelsViewModel
+@{
+    ViewData["Title"] = $"Étiquettes {Model.Order.Number}";
+}
+
+<section class="py-4 label-page">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 no-print">
+        <div><a asp-action="Details" asp-route-id="@Model.Order.Id" class="text-decoration-none">← Retour à la commande</a><h1 class="h3 mt-2 mb-0">Étiquettes · @Model.Order.Number</h1></div>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimer les étiquettes</button>
+    </div>
+    <div class="alert alert-info no-print">Chaque QR code contient le numéro de commande. Un scanner peut le saisir dans le champ de recherche du comptoir.</div>
+    <div class="label-grid">
+    @foreach (var line in Model.Order.Lines)
+    {
+        @for (var unit = 1; unit <= line.Quantity; unit++)
+        {
+            <article class="garment-label">
+                <div class="label-mark">PRESSING</div>
+                <div class="label-order">@Model.Order.Number</div>
+                <div class="label-item">@line.CategoryName</div>
+                <div class="label-service">@line.ServiceName</div>
+                @if (!string.IsNullOrWhiteSpace(line.Color)) { <div class="label-detail">Couleur : @line.Color</div> }
+                @if (!string.IsNullOrWhiteSpace(line.Brand)) { <div class="label-detail">Marque : @line.Brand</div> }
+                <div class="label-quantity">Article @unit / @line.Quantity</div>
+                <img src="@Model.QrCodeDataUri" alt="QR code de la commande @Model.Order.Number" />
+                <div class="label-customer">@Model.Order.Customer.FullName</div>
+            </article>
+        }
+    }
+    </div>
+</section>
+
+<style>
+    .label-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .garment-label { min-height:175px; border:1px dashed #6c757d; border-radius:8px; padding:12px; display:grid; grid-template-columns:1fr 70px; align-content:start; gap:2px 8px; break-inside:avoid; }
+    .garment-label img { width:70px; height:70px; grid-column:2; grid-row:1 / span 5; }
+    .label-mark { font-size:9px; letter-spacing:.12em; color:#6c757d; }
+    .label-order { font-size:17px; font-weight:700; }
+    .label-item { font-weight:600; }
+    .label-service,.label-detail,.label-quantity,.label-customer { font-size:11px; }
+    .label-quantity { margin-top:4px; }
+    .label-customer { grid-column:1 / -1; border-top:1px solid #dee2e6; padding-top:5px; margin-top:4px; }
+    @@media print {
+        @@page { size:A4; margin:9mm; }
+        body { background:white !important; }
+        .no-print, header, footer { display:none !important; }
+        .container { max-width:none !important; width:100% !important; padding:0 !important; }
+        .label-page { padding:0 !important; }
+        .label-grid { grid-template-columns:repeat(3,1fr); gap:5mm; }
+        .garment-label { min-height:48mm; border:1px dashed #777; }
+    }
+    @@media(max-width:700px) { .label-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+</style>

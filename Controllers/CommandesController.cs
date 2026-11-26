@@ -9,6 +9,7 @@ using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
 using Pressing.Services;
+using QRCoder;
 
 namespace Pressing.Controllers;
 
@@ -209,6 +210,23 @@ public sealed class CommandesController(
             .Where(status => status != OrderStatus.Cancelled || User.IsInRole(Roles.Administrator))
             .ToList();
         return View(new OrderDetailsViewModel { Order = order, AllowedStatuses = allowedStatuses });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Etiquettes(int id)
+    {
+        var order = await database.LaundryOrders.AsNoTracking().Include(item => item.Customer)
+            .Include(item => item.Lines).FirstOrDefaultAsync(item => item.Id == id);
+        if (order is null) return NotFound();
+        using var generator = new QRCodeGenerator();
+        using var qrData = generator.CreateQrCode(order.Number, QRCodeGenerator.ECCLevel.Q);
+        using var qrCode = new SvgQRCode(qrData);
+        var svg = qrCode.GetGraphic(4);
+        return View(new OrderLabelsViewModel
+        {
+            Order = order,
+            QrCodeDataUri = "data:image/svg+xml;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(svg))
+        });
     }
 
     [HttpGet]
