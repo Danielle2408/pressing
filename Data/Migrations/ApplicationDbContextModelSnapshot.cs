@@ -482,6 +482,79 @@ namespace Pressing.Data.Migrations
                     b.ToTable("OrderLines");
                 });
 
+            modelBuilder.Entity("Pressing.Models.OrderPayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<int>("LaundryOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("ProviderReference")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("ReceiptNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("TransactionReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ProviderReference")
+                        .IsUnique()
+                        .HasFilter("\"ProviderReference\" IS NOT NULL");
+
+                    b.HasIndex("ReceiptNumber")
+                        .IsUnique();
+
+                    b.HasIndex("LaundryOrderId", "CreatedAtUtc");
+
+                    b.HasIndex("Method", "TransactionReference")
+                        .IsUnique()
+                        .HasFilter("\"TransactionReference\" IS NOT NULL");
+
+                    b.ToTable("OrderPayments", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderPayments_Amount_Positive", "\"Amount\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Pressing.Models.OrderStatusHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -659,6 +732,25 @@ namespace Pressing.Data.Migrations
                     b.Navigation("ServiceTariff");
                 });
 
+            modelBuilder.Entity("Pressing.Models.OrderPayment", b =>
+                {
+                    b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
+                        .WithMany("Payments")
+                        .HasForeignKey("LaundryOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("LaundryOrder");
+                });
+
             modelBuilder.Entity("Pressing.Models.OrderStatusHistory", b =>
                 {
                     b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
@@ -710,6 +802,8 @@ namespace Pressing.Data.Migrations
             modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
                 {
                     b.Navigation("Lines");
+
+                    b.Navigation("Payments");
 
                     b.Navigation("StatusHistory");
                 });

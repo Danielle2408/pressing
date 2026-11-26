@@ -170,6 +170,7 @@ public sealed class CommandesController(
             .Include(item => item.Customer)
             .Include(item => item.CreatedByUser)
             .Include(item => item.Lines)
+            .Include(item => item.Payments).ThenInclude(item => item.CreatedByUser)
             .Include(item => item.StatusHistory).ThenInclude(item => item.User)
             .FirstOrDefaultAsync(item => item.Id == id);
 
@@ -231,6 +232,83 @@ public sealed class CommandesController(
         await database.SaveChangesAsync();
 
         TempData["OrderSuccess"] = $"La commande est maintenant au statut « {status.ToFrench()} ».";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EnregistrerPaiement(
+        int id,
+        decimal amount,
+        PaymentMethod method,
+        string? reference)
+    {
+        if (!Enum.IsDefined(method) || method == PaymentMethod.Notchpay)
+            return BadRequest("Choisis un moyen de paiement reçu au comptoir.");
+        if (amount <= 0)
+        {
+            TempData["OrderError"] = "Le montant encaissé doit être supérieur à 0 FCFA.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var transactionReference = string.IsNullOrWhiteSpace(reference) ? null : reference.Trim();
+        if (transactionReference?.Length > 120)
+        {
+            TempData["OrderError"] = "La référence du paiement ne peut pas dépasser 120 caractères.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Challenge();
+
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        var order = await database.LaundryOrders
+            .FromSqlInterpolated($"SELECT * FROM \"LaundryOrders\" WHERE \"Id\" = {id} FOR UPDATE")
+            .SingleOrDefaultAsync();
+        if (order is null)
+            return NotFound();
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            TempData["OrderError"] = "Une commande annulée ne peut pas recevoir de paiement.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var remaining = order.TotalAmount - order.AmountPaid;
+        if (amount > remaining)
+        {
+            TempData["OrderError"] = $"Le montant dépasse le solde dû de {remaining:N0} FCFA.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (transactionReference is not null && await database.OrderPayments.AnyAsync(payment =>
+                payment.Method == method && payment.TransactionReference == transactionReference))
+        {
+            TempData["OrderError"] = "Cette référence de transaction a déjà été enregistrée.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var now = DateTime.UtcNow;
+        var payment = new OrderPayment
+        {
+            ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
+            LaundryOrderId = id,
+            Amount = decimal.Round(amount, 2),
+            Method = method,
+            Status = OrderPaymentStatus.Confirmed,
+            Currency = "XAF",
+            TransactionReference = transactionReference,
+            CreatedByUserId = userId,
+            CreatedAtUtc = now
+        };
+        order.AmountPaid += payment.Amount;
+        database.OrderPayments.Add(payment);
+        await database.SaveChangesAsync();
+        payment.ReceiptNumber = $"REC-{now.Year}-{payment.Id:D6}";
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        TempData["OrderSuccess"] = $"Paiement de {payment.Amount:N0} FCFA enregistré. Reçu {payment.ReceiptNumber}.";
         return RedirectToAction(nameof(Details), new { id });
     }
 

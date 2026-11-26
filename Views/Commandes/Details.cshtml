@@ -138,6 +138,72 @@
                 </div>
             </div>
 
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h5">Encaissements</h2>
+                    @if (order.Payments.Count == 0)
+                    {
+                        <p class="text-secondary mt-3 mb-0">Aucun paiement enregistré.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive mt-3">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light"><tr><th>Reçu</th><th>Moyen</th><th>Date</th><th class="text-end">Montant</th></tr></thead>
+                                <tbody>
+                                @foreach (var payment in order.Payments.OrderByDescending(item => item.CreatedAtUtc))
+                                {
+                                    <tr>
+                                        <td>@payment.ReceiptNumber
+                                            @if (!string.IsNullOrWhiteSpace(payment.TransactionReference))
+                                            {
+                                                <div class="small text-secondary">Réf. @payment.TransactionReference</div>
+                                            }
+                                            <div class="small text-secondary">Par @payment.CreatedByUser.FullName</div>
+                                        </td>
+                                        <td>@payment.Method.ToFrench()</td>
+                                        <td>@payment.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td class="text-end fw-semibold">@payment.Amount.ToString("N0") FCFA</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (order.Status != OrderStatus.Cancelled && order.AmountPaid < order.TotalAmount)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h2 class="h5">Enregistrer un encaissement</h2>
+                        <p class="text-secondary small">Saisis uniquement un paiement que le client vient réellement de remettre ou confirmer au comptoir.</p>
+                        <form asp-action="EnregistrerPaiement" method="post" class="mt-3">
+                            <input type="hidden" name="id" value="@order.Id" />
+                            <div class="mb-3">
+                                <label class="form-label" for="payment-amount">Montant reçu (FCFA)</label>
+                                <input class="form-control" id="payment-amount" name="amount" type="number" min="1" max="@((order.TotalAmount - order.AmountPaid).ToString(System.Globalization.CultureInfo.InvariantCulture))" step="1" required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="payment-method">Moyen de paiement</label>
+                                <select class="form-select" id="payment-method" name="method" required>
+                                    @foreach (var method in Enum.GetValues<PaymentMethod>().Where(item => item != PaymentMethod.Notchpay))
+                                    {
+                                        <option value="@((int)method)">@method.ToFrench()</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="payment-reference">Référence de transaction (si disponible)</label>
+                                <input class="form-control" id="payment-reference" name="reference" maxlength="120" />
+                            </div>
+                            <button class="btn btn-primary w-100" type="submit">Confirmer le paiement reçu</button>
+                        </form>
+                    </div>
+                </div>
+            }
+
             @if (Model.AllowedStatuses.Count > 0)
             {
                 <div class="card border-0 shadow-sm">

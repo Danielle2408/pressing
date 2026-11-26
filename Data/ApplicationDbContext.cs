@@ -14,6 +14,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<LaundryOrder> LaundryOrders => Set<LaundryOrder>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<OrderPayment> OrderPayments => Set<OrderPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -116,6 +117,28 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(item => item.User).WithMany()
                 .HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderPayment>(entity =>
+        {
+            entity.Property(item => item.ReceiptNumber).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.Amount).HasPrecision(18, 2);
+            entity.Property(item => item.Method).HasConversion<string>().HasMaxLength(24);
+            entity.Property(item => item.Status).HasConversion<string>().HasMaxLength(24);
+            entity.Property(item => item.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(item => item.TransactionReference).HasMaxLength(120);
+            entity.Property(item => item.ProviderReference).HasMaxLength(160);
+            entity.HasIndex(item => item.ReceiptNumber).IsUnique();
+            entity.HasIndex(item => new { item.Method, item.TransactionReference })
+                .IsUnique().HasFilter("\"TransactionReference\" IS NOT NULL");
+            entity.HasIndex(item => item.ProviderReference).IsUnique()
+                .HasFilter("\"ProviderReference\" IS NOT NULL");
+            entity.HasIndex(item => new { item.LaundryOrderId, item.CreatedAtUtc });
+            entity.ToTable(table => table.HasCheckConstraint("CK_OrderPayments_Amount_Positive", "\"Amount\" > 0"));
+            entity.HasOne(item => item.LaundryOrder).WithMany(order => order.Payments)
+                .HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.CreatedByUser).WithMany()
+                .HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
