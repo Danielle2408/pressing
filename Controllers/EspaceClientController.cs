@@ -17,8 +17,10 @@ namespace Pressing.Controllers;
 public sealed class EspaceClientController(
     ApplicationDbContext database,
     IOptions<OrderSettings> orderOptions,
+    IOptions<LoyaltySettings> loyaltyOptions,
     UserManager<ApplicationUser> users,
-    SignInManager<ApplicationUser> signInManager) : Controller
+    SignInManager<ApplicationUser> signInManager,
+    LoyaltyRewardService loyaltyRewards) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
     [HttpGet]
@@ -36,7 +38,13 @@ public sealed class EspaceClientController(
             .Take(100)
             .ToListAsync();
 
-        return View(new CustomerPortalViewModel { Customer = customer, Orders = orders });
+        return View(new CustomerPortalViewModel
+        {
+            Customer = customer, Orders = orders,
+            LoyaltyHistory = await database.LoyaltyLedgerEntries.AsNoTracking().Include(item => item.LaundryOrder)
+                .Where(item => item.CustomerId == customer.Id).OrderByDescending(item => item.CreatedAtUtc).Take(50).ToListAsync(),
+            CurrencyPerPoint = loyaltyOptions.Value.CurrencyPerPoint
+        });
     }
 
     [HttpGet]
@@ -455,6 +463,7 @@ public sealed class EspaceClientController(
         current.Status = OrderPaymentStatus.Confirmed;
         current.ReceiptNumber = $"REC-{DateTime.UtcNow.Year}-{current.Id:D6}";
         order.AmountPaid += current.Amount;
+        await loyaltyRewards.AwardIfFullyPaidAsync(order);
         database.UserNotifications.Add(new UserNotification
         {
             UserId = current.CreatedByUserId, Title = "Paiement confirmé",

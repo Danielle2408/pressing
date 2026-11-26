@@ -557,6 +557,9 @@ namespace Pressing.Data.Migrations
                     b.Property<bool>("IsOnlineRequest")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("LoyaltyRewardGranted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -623,6 +626,39 @@ namespace Pressing.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("LaundryServices");
+                });
+
+            modelBuilder.Entity("Pressing.Models.LoyaltyLedgerEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LaundryOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LaundryOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId", "CreatedAtUtc");
+
+                    b.ToTable("LoyaltyLedgerEntries", t =>
+                        {
+                            t.HasCheckConstraint("CK_LoyaltyLedgerEntries_Points_Positive", "\"Points\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("Pressing.Models.OrderLine", b =>
@@ -1067,6 +1103,25 @@ namespace Pressing.Data.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Pressing.Models.LoyaltyLedgerEntry", b =>
+                {
+                    b.HasOne("Pressing.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
+                        .WithMany()
+                        .HasForeignKey("LaundryOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("LaundryOrder");
                 });
 
             modelBuilder.Entity("Pressing.Models.OrderLine", b =>

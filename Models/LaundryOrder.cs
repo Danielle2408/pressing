@@ -25,6 +25,7 @@ public sealed class LaundryOrder
     public string? CancellationReason { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
+    public bool LoyaltyRewardGranted { get; set; }
     public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
     public ICollection<OrderStatusHistory> StatusHistory { get; set; } = new List<OrderStatusHistory>();
     public ICollection<OrderPayment> Payments { get; set; } = new List<OrderPayment>();

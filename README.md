@@ -33,6 +33,10 @@ Le paiement en ligne utilise l’API et la page hébergée Notch Pay. Il n’est
 
 Dans le tableau de bord Notch Pay, configure le webhook sur `https://<domaine-public>/webhooks/notchpay`. La route de retour client est générée par l’application. Une URL locale non accessible depuis Internet ne permet pas de recevoir les notifications en production. Commence avec les clés de test Notch Pay, puis passe aux clés de production seulement lorsque le compte marchand et le déploiement sont prêts.
 
+## Fidélité
+
+La règle d’attribution est configurée par `Loyalty__CurrencyPerPoint` (1 000 FCFA par défaut). Les points sont crédités une seule fois quand le solde d’une commande est intégralement payé. Le solde et l’historique sont consultables dans l’espace client.
+
 ## Migrations
 
 Les migrations EF Core sont versionnées dans `Data/Migrations` et appliquées au démarrage.

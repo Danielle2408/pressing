@@ -6,6 +6,8 @@ public sealed class CustomerPortalViewModel
 {
     public Customer Customer { get; init; } = null!;
     public IReadOnlyList<LaundryOrder> Orders { get; init; } = [];
+    public IReadOnlyList<LoyaltyLedgerEntry> LoyaltyHistory { get; init; } = [];
+    public decimal CurrencyPerPoint { get; init; }
 }
 
 public sealed class CustomerOrderDetailsViewModel

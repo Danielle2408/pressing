@@ -16,7 +16,8 @@ namespace Pressing.Controllers;
 [Route("Comptoir/Commandes/[action]")]
 public sealed class CommandesController(
     ApplicationDbContext database,
-    IOptions<OrderSettings> orderOptions) : Controller
+    IOptions<OrderSettings> orderOptions,
+    LoyaltyRewardService loyaltyRewards) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
 
@@ -345,6 +346,7 @@ public sealed class CommandesController(
             CreatedAtUtc = now
         };
         order.AmountPaid += payment.Amount;
+        await loyaltyRewards.AwardIfFullyPaidAsync(order);
         database.OrderPayments.Add(payment);
         var customerUserId = await database.Customers.Where(item => item.Id == order.CustomerId)
             .Select(item => item.ApplicationUserId).FirstOrDefaultAsync();

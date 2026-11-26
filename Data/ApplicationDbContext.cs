@@ -21,6 +21,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<CustomerClaim> CustomerClaims => Set<CustomerClaim>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<LoyaltyLedgerEntry> LoyaltyLedgerEntries => Set<LoyaltyLedgerEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -215,6 +216,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(item => item.Url).HasMaxLength(500);
             entity.HasIndex(item => new { item.UserId, item.IsRead, item.CreatedAtUtc });
             entity.HasOne(item => item.User).WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<LoyaltyLedgerEntry>(entity =>
+        {
+            entity.HasIndex(item => item.LaundryOrderId).IsUnique();
+            entity.HasIndex(item => new { item.CustomerId, item.CreatedAtUtc });
+            entity.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.LaundryOrder).WithMany().HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_LoyaltyLedgerEntries_Points_Positive", "\"Points\" > 0"));
         });
     }
 }

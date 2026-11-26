@@ -6,13 +6,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pressing.Data;
 using Pressing.Models;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
 [ApiController]
 [AllowAnonymous]
 [Route("webhooks/notchpay")]
-public sealed class NotchPayWebhookController(ApplicationDbContext database, IConfiguration configuration) : ControllerBase
+public sealed class NotchPayWebhookController(
+    ApplicationDbContext database,
+    IConfiguration configuration,
+    LoyaltyRewardService loyaltyRewards) : ControllerBase
 {
     [HttpPost]
     [RequestSizeLimit(65536)]
@@ -52,6 +56,7 @@ public sealed class NotchPayWebhookController(ApplicationDbContext database, ICo
             current.Status = OrderPaymentStatus.Confirmed;
             current.ReceiptNumber = $"REC-{DateTime.UtcNow.Year}-{current.Id:D6}";
             order.AmountPaid += current.Amount;
+            await loyaltyRewards.AwardIfFullyPaidAsync(order);
             database.UserNotifications.Add(new UserNotification
             {
                 UserId = current.CreatedByUserId, Title = "Paiement confirmé",
