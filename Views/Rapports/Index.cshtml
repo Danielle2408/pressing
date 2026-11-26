@@ -1,0 +1,22 @@
+@model PerformanceReportViewModel
+@{
+    ViewData["Title"] = "Performance";
+}
+
+<section class="py-4">
+    <div class="mb-4"><span class="text-primary fw-semibold small text-uppercase">Administration</span><h1 class="display-6 fw-bold mt-2">Performance des opérateurs</h1><p class="text-secondary">Commandes créées par opérateur et délai entre l’enregistrement et le statut « prête ».</p></div>
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-3"><label class="form-label" for="from">Du</label><input class="form-control" id="from" name="from" type="date" value="@Model.From.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-3"><label class="form-label" for="to">Au</label><input class="form-control" id="to" name="to" type="date" value="@Model.To.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-auto align-self-end"><button class="btn btn-outline-primary" type="submit">Afficher</button></div>
+        <div class="col-auto align-self-end"><a asp-action="ExporterPdf" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Exporter PDF</a></div>
+        <div class="col-auto align-self-end"><a asp-action="ExporterCsv" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Exporter CSV</a></div>
+    </form>
+    <div class="row g-3 mb-4"><div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="small text-secondary">Clients sans commande récente (90 jours)</div><div class="fs-3 fw-bold">@Model.InactiveCustomerCount</div></div></div></div></div>
+    <div class="card border-0 shadow-sm overflow-hidden"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Opérateur</th><th class="text-end">Créées</th><th class="text-end">Prêtes</th><th class="text-end">Livrées</th><th class="text-end">Délai moyen</th><th class="text-end">Ventes associées</th></tr></thead><tbody>
+        @if (Model.Operators.Count == 0) { <tr><td colspan="6" class="text-center text-secondary py-4">Aucune commande d’opérateur pour cette période.</td></tr> }
+        @foreach (var item in Model.Operators) { <tr><td>@item.Name</td><td class="text-end">@item.OrdersCreated</td><td class="text-end">@item.OrdersReady</td><td class="text-end">@item.OrdersDelivered</td><td class="text-end">@(item.AverageProcessingHours.HasValue ? $"{item.AverageProcessingHours.Value:N1} h" : "—")</td><td class="text-end">@item.Revenue.ToString("N0") FCFA</td></tr> }
+    </tbody></table></div></div>
+    <p class="small text-secondary mt-3">Les ventes associées correspondent au total des commandes enregistrées par l’opérateur sur la période, pas au montant encaissé.</p>
+</section>
