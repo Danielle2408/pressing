@@ -159,6 +159,17 @@ public sealed class CommandesController(
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        if (!string.IsNullOrWhiteSpace(customer.ApplicationUserId))
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = customer.ApplicationUserId, Title = "Commande reçue",
+                Message = $"La commande {order.Number} a été enregistrée par le pressing.",
+                Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = now
+            });
+            await database.SaveChangesAsync();
+        }
+
         TempData["OrderSuccess"] = $"La commande {order.Number} a été créée.";
         return RedirectToAction(nameof(Details), new { id = order.Id });
     }
@@ -229,6 +240,17 @@ public sealed class CommandesController(
             ChangedAtUtc = DateTime.UtcNow,
             Reason = cleanReason
         });
+        var customerUserId = await database.Customers.Where(item => item.Id == order.CustomerId)
+            .Select(item => item.ApplicationUserId).FirstOrDefaultAsync();
+        if (!string.IsNullOrWhiteSpace(customerUserId))
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = customerUserId, Title = "Suivi de commande mis à jour",
+                Message = $"La commande {order.Number} est maintenant « {status.ToFrench()} ».",
+                Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = DateTime.UtcNow
+            });
+        }
         await database.SaveChangesAsync();
 
         TempData["OrderSuccess"] = $"La commande est maintenant au statut « {status.ToFrench()} ».";
@@ -311,6 +333,17 @@ public sealed class CommandesController(
         };
         order.AmountPaid += payment.Amount;
         database.OrderPayments.Add(payment);
+        var customerUserId = await database.Customers.Where(item => item.Id == order.CustomerId)
+            .Select(item => item.ApplicationUserId).FirstOrDefaultAsync();
+        if (!string.IsNullOrWhiteSpace(customerUserId))
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = customerUserId, Title = "Paiement enregistré",
+                Message = $"Un paiement de {payment.Amount:N0} FCFA a été enregistré pour {order.Number}.",
+                Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = now
+            });
+        }
         await database.SaveChangesAsync();
         payment.ReceiptNumber = $"REC-{now.Year}-{payment.Id:D6}";
         await database.SaveChangesAsync();

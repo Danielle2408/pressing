@@ -1,0 +1,29 @@
+@model NotificationListViewModel
+@{
+    ViewData["Title"] = "Notifications";
+}
+
+<section class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div><span class="text-primary fw-semibold small text-uppercase">Centre de notifications</span><h1 class="display-6 fw-bold mt-2 mb-0">Notifications</h1><p class="text-secondary">@Model.UnreadCount non lue(s)</p></div>
+        @if (Model.UnreadCount > 0)
+        {
+            <form asp-action="ToutLire" method="post"><button class="btn btn-outline-primary" type="submit">Tout marquer comme lu</button></form>
+        }
+    </div>
+    <div class="d-grid gap-2">
+        @if (Model.Notifications.Count == 0) { <div class="card border-0 shadow-sm"><div class="card-body text-secondary">Tu n’as pas encore de notification.</div></div> }
+        @foreach (var notification in Model.Notifications)
+        {
+            <form asp-action="Ouvrir" method="post">
+                <input type="hidden" name="id" value="@notification.Id" />
+                <button type="submit" class="card border-0 shadow-sm w-100 text-start @(notification.IsRead ? "" : "border-start border-4 border-primary")">
+                    <span class="card-body d-flex flex-wrap justify-content-between gap-2">
+                        <span><strong>@notification.Title</strong><span class="d-block mt-1">@notification.Message</span></span>
+                        <span class="small text-secondary">@notification.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </span>
+                </button>
+            </form>
+        }
+    </div>
+</section>

@@ -52,6 +52,12 @@ public sealed class NotchPayWebhookController(ApplicationDbContext database, ICo
             current.Status = OrderPaymentStatus.Confirmed;
             current.ReceiptNumber = $"REC-{DateTime.UtcNow.Year}-{current.Id:D6}";
             order.AmountPaid += current.Amount;
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = current.CreatedByUserId, Title = "Paiement confirmé",
+                Message = $"Notch Pay a confirmé {current.Amount:N0} FCFA pour la commande {order.Number}.",
+                Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = DateTime.UtcNow
+            });
             await database.SaveChangesAsync();
         }
         await transaction.CommitAsync();

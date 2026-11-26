@@ -7,12 +7,16 @@ using Pressing.Security;
 using Pressing.ViewModels;
 using Pressing.Models;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Identity;
 
 namespace Pressing.Controllers;
 
 [Authorize(Policy = Roles.Customer)]
 [Route("EspaceClient/[action]")]
-public sealed class EspaceClientController(ApplicationDbContext database, IOptions<OrderSettings> orderOptions) : Controller
+public sealed class EspaceClientController(
+    ApplicationDbContext database,
+    IOptions<OrderSettings> orderOptions,
+    UserManager<ApplicationUser> users) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
     [HttpGet]
@@ -128,6 +132,18 @@ public sealed class EspaceClientController(ApplicationDbContext database, IOptio
         await database.SaveChangesAsync();
         order.Number = $"PR-{now.Year}-{order.Id:D6}";
         await database.SaveChangesAsync();
+        var staffUsers = (await users.GetUsersInRoleAsync(Roles.Administrator))
+            .Concat(await users.GetUsersInRoleAsync(Roles.Operator)).Where(item => item.IsActive).DistinctBy(item => item.Id);
+        foreach (var staff in staffUsers)
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = staff.Id, Title = "Nouvelle demande client",
+                Message = $"{customer.FullName} a transmis la demande {order.Number} à confirmer.",
+                Url = $"/Comptoir/Commandes/Details/{order.Id}", CreatedAtUtc = now
+            });
+        }
+        await database.SaveChangesAsync();
         TempData["RequestSuccess"] = $"Ta demande {order.Number} a été transmise au pressing pour confirmation.";
         return RedirectToAction(nameof(Details), new { id = order.Id });
     }
@@ -196,6 +212,17 @@ public sealed class EspaceClientController(ApplicationDbContext database, IOptio
             LaundryOrderId = model.OrderId, CustomerId = customer.Id, Description = model.Description.Trim(),
             CreatedByUserId = userId!, CreatedAtUtc = DateTime.UtcNow, Status = ClaimStatus.Open
         });
+        var staffUsers = (await users.GetUsersInRoleAsync(Roles.Administrator))
+            .Concat(await users.GetUsersInRoleAsync(Roles.Operator)).Where(item => item.IsActive).DistinctBy(item => item.Id);
+        foreach (var staff in staffUsers)
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = staff.Id, Title = "Nouvelle réclamation",
+                Message = $"{customer.FullName} a signalé un problème sur la commande {model.OrderId}.",
+                Url = $"/Comptoir/Reclamations/Index", CreatedAtUtc = DateTime.UtcNow
+            });
+        }
         await database.SaveChangesAsync();
         TempData["ClaimSuccess"] = "Ta réclamation a été transmise à l’équipe du pressing.";
         return RedirectToAction(nameof(Details), new { id = model.OrderId });
@@ -348,6 +375,12 @@ public sealed class EspaceClientController(ApplicationDbContext database, IOptio
         current.Status = OrderPaymentStatus.Confirmed;
         current.ReceiptNumber = $"REC-{DateTime.UtcNow.Year}-{current.Id:D6}";
         order.AmountPaid += current.Amount;
+        database.UserNotifications.Add(new UserNotification
+        {
+            UserId = current.CreatedByUserId, Title = "Paiement confirmé",
+            Message = $"Notch Pay a confirmé {current.Amount:N0} FCFA pour la commande {order.Number}.",
+            Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = DateTime.UtcNow
+        });
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
     }

@@ -33,7 +33,7 @@ public sealed class ReclamationsController(ApplicationDbContext database) : Cont
     {
         if (!Enum.IsDefined(status)) return BadRequest();
         if (!User.IsInRole(Roles.Administrator) && status != ClaimStatus.UnderReview) return Forbid();
-        var claim = await database.CustomerClaims.FirstOrDefaultAsync(item => item.Id == id);
+        var claim = await database.CustomerClaims.Include(item => item.Customer).FirstOrDefaultAsync(item => item.Id == id);
         if (claim is null) return NotFound();
         if (claim.Status is ClaimStatus.Resolved or ClaimStatus.Rejected)
         {
@@ -53,6 +53,17 @@ public sealed class ReclamationsController(ApplicationDbContext database) : Cont
         {
             claim.ResolvedAtUtc = DateTime.UtcNow;
             claim.ResolvedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
+        if (!string.IsNullOrWhiteSpace(claim.Customer.ApplicationUserId))
+        {
+            database.UserNotifications.Add(new UserNotification
+            {
+                UserId = claim.Customer.ApplicationUserId, Title = "Réclamation mise à jour",
+                Message = finalDecision
+                    ? $"Une décision a été enregistrée pour la réclamation de la commande {claim.LaundryOrderId}."
+                    : $"Ta réclamation de la commande {claim.LaundryOrderId} est en cours d’examen.",
+                Url = $"/EspaceClient/Details/{claim.LaundryOrderId}", CreatedAtUtc = DateTime.UtcNow
+            });
         }
         await database.SaveChangesAsync();
         TempData["ClaimSuccess"] = finalDecision ? "La décision a été enregistrée." : "La réclamation est maintenant en cours d’examen.";
