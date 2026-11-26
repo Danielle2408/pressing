@@ -24,6 +24,15 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Accueil</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Catalogue" asp-action="Index">Services et tarifs</a>
+                        </li>
+                        @if (User.IsInRole("Administrateur"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="CatalogueAdmin" asp-action="Index">Administration</a>
+                            </li>
+                        }
+                        <li class="nav-item">
                             @if (User.Identity?.IsAuthenticated == true)
                             {
                                 <form asp-controller="Compte" asp-action="Deconnexion" method="post" class="d-inline">

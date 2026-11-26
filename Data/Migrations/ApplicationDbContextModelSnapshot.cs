@@ -228,6 +228,103 @@ namespace Pressing.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Pressing.Models.GarmentCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("GarmentCategories");
+                });
+
+            modelBuilder.Entity("Pressing.Models.LaundryService", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("LaundryServices");
+                });
+
+            modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("GarmentCategoryId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LaundryServiceId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("ValidFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LaundryServiceId");
+
+                    b.HasIndex("GarmentCategoryId", "LaundryServiceId", "ValidFromUtc")
+                        .IsUnique();
+
+                    b.HasIndex("GarmentCategoryId", "LaundryServiceId", "ValidUntilUtc");
+
+                    b.ToTable("ServiceTariffs", t =>
+                        {
+                            t.HasCheckConstraint("CK_ServiceTariffs_Price_NonNegative", "\"Price\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -277,6 +374,35 @@ namespace Pressing.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>
+                {
+                    b.HasOne("Pressing.Models.GarmentCategory", "GarmentCategory")
+                        .WithMany("Tariffs")
+                        .HasForeignKey("GarmentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.LaundryService", "LaundryService")
+                        .WithMany("Tariffs")
+                        .HasForeignKey("LaundryServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GarmentCategory");
+
+                    b.Navigation("LaundryService");
+                });
+
+            modelBuilder.Entity("Pressing.Models.GarmentCategory", b =>
+                {
+                    b.Navigation("Tariffs");
+                });
+
+            modelBuilder.Entity("Pressing.Models.LaundryService", b =>
+                {
+                    b.Navigation("Tariffs");
                 });
 #pragma warning restore 612, 618
         }
