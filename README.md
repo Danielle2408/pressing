@@ -37,6 +37,10 @@ Dans le tableau de bord Notch Pay, configure le webhook sur `https://<domaine-pu
 
 La règle d’attribution est configurée par `Loyalty__CurrencyPerPoint` (1 000 FCFA par défaut). Les points sont crédités une seule fois quand le solde d’une commande est intégralement payé. Le solde et l’historique sont consultables dans l’espace client.
 
+## E-mails de récupération du mot de passe
+
+Configure `Email__Host`, `Email__Port`, `Email__UserName`, `Email__Password` et `Email__FromAddress` dans l’environnement de déploiement pour envoyer les confirmations d’adresse et les liens de réinitialisation via SMTP. Ces valeurs ne doivent pas être ajoutées à Git. Sans configuration SMTP, le formulaire affiche toujours le même message de confirmation, mais aucun e-mail ne peut partir et un nouveau compte ne peut pas se connecter avant confirmation.
+
 ## Migrations
 
 Les migrations EF Core sont versionnées dans `Data/Migrations` et appliquées au démarrage.

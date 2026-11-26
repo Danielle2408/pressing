@@ -18,3 +18,24 @@ public sealed class LoginViewModel
 
     public string? ReturnUrl { get; set; }
 }
+
+public sealed class ForgotPasswordViewModel
+{
+    [Required, EmailAddress]
+    [Display(Name = "Adresse e-mail")]
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ResetPasswordViewModel
+{
+    [Required]
+    public string UserId { get; set; } = string.Empty;
+    [Required]
+    public string Token { get; set; } = string.Empty;
+    [Required, DataType(DataType.Password), StringLength(100, MinimumLength = 10)]
+    [Display(Name = "Nouveau mot de passe")]
+    public string Password { get; set; } = string.Empty;
+    [Required, DataType(DataType.Password), Compare(nameof(Password), ErrorMessage = "Les mots de passe ne correspondent pas.")]
+    [Display(Name = "Confirmer le mot de passe")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}

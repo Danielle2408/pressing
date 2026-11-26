@@ -1,0 +1,13 @@
+@model ForgotPasswordViewModel
+@{
+    ViewData["Title"] = "Confirmer mon adresse e-mail";
+}
+
+<div class="row justify-content-center py-5"><div class="col-12 col-md-7 col-lg-5"><div class="card border-0 shadow-sm"><div class="card-body p-4 p-md-5">
+    <h1 class="h3 mb-2">E-mail de confirmation</h1><p class="text-secondary">Saisis l’adresse e-mail utilisée à l’inscription.</p>
+    <form asp-action="RenvoyerConfirmation" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" type="email" autocomplete="email" required /><span asp-validation-for="Email" class="text-danger"></span></div>
+        <button class="btn btn-primary w-100" type="submit">Envoyer l’e-mail</button>
+    </form>
+</div></div></div></div>

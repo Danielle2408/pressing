@@ -9,8 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<OrderSettings>(builder.Configuration.GetSection("Ordering"));
 builder.Services.Configure<LoyaltySettings>(builder.Configuration.GetSection("Loyalty"));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<Pressing.Services.LoyaltyRewardService>();
 builder.Services.AddScoped<Pressing.Services.PromotionPricingService>();
+builder.Services.AddScoped<Pressing.Services.SmtpEmailSender>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Pressing")));
 
@@ -18,6 +20,7 @@ builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
     {
         options.User.RequireUniqueEmail = false;
+        options.SignIn.RequireConfirmedEmail = true;
         options.Password.RequiredLength = 10;
         options.Password.RequireDigit = true;
         options.Password.RequireUppercase = true;
