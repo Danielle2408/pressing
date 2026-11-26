@@ -1,0 +1,252 @@
+@model OrderCreatePageViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Nouvelle commande";
+    var categoriesJson = JsonSerializer.Serialize(Model.Categories.Select(item => new { item.Id, item.Name }));
+    var pricesJson = JsonSerializer.Serialize(Model.Prices);
+    var initialLinesJson = JsonSerializer.Serialize(Model.Form.Lines.Select(item => new
+    {
+        item.CategoryId, item.ServiceId, item.Quantity, item.Color, item.Brand, item.ReceptionCondition, item.Notes
+    }));
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour aux commandes</a>
+    <div class="mt-3 mb-4">
+        <span class="text-primary fw-semibold small text-uppercase">Comptoir</span>
+        <h1 class="display-6 fw-bold mt-2">Nouvelle commande</h1>
+        <p class="text-secondary">Le prix est calculé à partir du tarif en vigueur et enregistré avec la commande.</p>
+    </div>
+
+    @if (Model.Customers.Count == 0)
+    {
+        <div class="alert alert-info">Crée d’abord une fiche client pour enregistrer une commande. <a asp-controller="Clients" asp-action="Creer" class="alert-link">Créer un client</a></div>
+    }
+    @if (Model.Prices.Count == 0)
+    {
+        <div class="alert alert-info">Ajoute des articles, des services et leurs tarifs dans le <a asp-controller="CatalogueAdmin" asp-action="Index" class="alert-link">catalogue administrateur</a>.</div>
+    }
+
+    <form asp-action="Creer" method="post" id="order-form">
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <h2 class="h5 mb-3">Client et retrait</h2>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Form.CustomerId" class="form-label"></label>
+                                <select asp-for="Form.CustomerId" class="form-select" required>
+                                    <option value="">Sélectionner un client</option>
+                                    @foreach (var customer in Model.Customers)
+                                    {
+                                        <option value="@customer.Id">@customer.FullName — @customer.PhoneNumber</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Form.CustomerId" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Form.ExpectedReadyAtLocal" class="form-label"></label>
+                                <input asp-for="Form.ExpectedReadyAtLocal" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" required />
+                                <span asp-validation-for="Form.ExpectedReadyAtLocal" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4 form-check ms-2">
+                                <input asp-for="Form.Express" class="form-check-input" />
+                                <label asp-for="Form.Express" class="form-check-label">Express (+@Model.Settings.ExpressSurchargePercent %)</label>
+                            </div>
+                            <div class="col-md-4 form-check ms-2">
+                                <input asp-for="Form.HomeCollection" class="form-check-input" />
+                                <label asp-for="Form.HomeCollection" class="form-check-label">Collecte à domicile (@Model.Settings.HomeCollectionFee.ToString("N0") FCFA)</label>
+                            </div>
+                            <div class="col-md-4 form-check ms-2">
+                                <input asp-for="Form.HomeDelivery" class="form-check-input" />
+                                <label asp-for="Form.HomeDelivery" class="form-check-label">Livraison à domicile (@Model.Settings.HomeDeliveryFee.ToString("N0") FCFA)</label>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="Form.Notes" class="form-label"></label>
+                                <textarea asp-for="Form.Notes" class="form-control" rows="2" placeholder="Instructions générales"></textarea>
+                                <span asp-validation-for="Form.Notes" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h5 mb-0">Articles à traiter</h2>
+                            <button id="add-line" class="btn btn-sm btn-outline-primary" type="button">Ajouter un article</button>
+                        </div>
+                        <div id="order-lines"></div>
+                        <div class="text-danger small" asp-validation-for="Form.Lines"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm position-sticky" style="top: 1rem;">
+                    <div class="card-body p-4">
+                        <h2 class="h5">Récapitulatif estimatif</h2>
+                        <div class="d-flex justify-content-between mt-4"><span class="text-secondary">Articles</span><span id="base-total">0 FCFA</span></div>
+                        <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Express</span><span id="express-total">0 FCFA</span></div>
+                        <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Collecte à domicile</span><span id="collection-total">0 FCFA</span></div>
+                        <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Livraison à domicile</span><span id="delivery-total">0 FCFA</span></div>
+                        <hr />
+                        <div class="d-flex justify-content-between fw-semibold fs-5"><span>Total</span><span id="grand-total">0 FCFA</span></div>
+                        <p class="text-secondary small mt-3">L’estimation est recalculée et vérifiée côté serveur avant validation.</p>
+                        <button class="btn btn-primary w-100 mt-2" type="submit" @(Model.Customers.Count == 0 || Model.Prices.Count == 0 ? "disabled" : null)>Enregistrer la commande</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</section>
+
+<template id="order-line-template">
+    <div class="order-line border rounded-3 p-3 mb-3" data-order-line>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-semibold">Article <span data-line-number></span></span>
+            <button class="btn btn-sm btn-link text-danger p-0" type="button" data-remove-line>Retirer</button>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Vêtement</label>
+                <select class="form-select" name="Form.Lines[__index__].CategoryId" data-category required></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Service</label>
+                <select class="form-select" name="Form.Lines[__index__].ServiceId" data-service required></select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Quantité</label>
+                <input class="form-control" type="number" min="1" max="100" value="1" name="Form.Lines[__index__].Quantity" data-quantity required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Couleur</label>
+                <input class="form-control" maxlength="60" name="Form.Lines[__index__].Color" data-color />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Marque</label>
+                <input class="form-control" maxlength="80" name="Form.Lines[__index__].Brand" data-brand />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Prix unitaire</label>
+                <div class="form-control bg-light" data-unit-price>Choisir un service</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">État à la réception</label>
+                <input class="form-control" maxlength="500" placeholder="Tache, déchirure, bouton manquant…" name="Form.Lines[__index__].ReceptionCondition" data-condition />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Note sur l’article</label>
+                <input class="form-control" maxlength="500" name="Form.Lines[__index__].Notes" data-notes />
+            </div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const categories = @Html.Raw(categoriesJson);
+            const prices = @Html.Raw(pricesJson);
+            const initialLines = @Html.Raw(initialLinesJson);
+            const expressPercent = @Model.Settings.ExpressSurchargePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const collectionFee = @Model.Settings.HomeCollectionFee.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const deliveryFee = @Model.Settings.HomeDeliveryFee.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const linesContainer = document.getElementById('order-lines');
+            const template = document.getElementById('order-line-template');
+            const money = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+
+            function priceFor(categoryId, serviceId) {
+                return prices.find(rate => rate.CategoryId === Number(categoryId) && rate.ServiceId === Number(serviceId));
+            }
+
+            function refreshServices(line, selectedServiceId = 0) {
+                const category = Number(line.querySelector('[data-category]').value);
+                const serviceSelect = line.querySelector('[data-service]');
+                serviceSelect.innerHTML = '<option value="">Choisir un service</option>';
+                prices.filter(rate => rate.CategoryId === category).forEach(rate => {
+                    const option = document.createElement('option');
+                    option.value = rate.ServiceId;
+                    option.textContent = rate.ServiceName;
+                    serviceSelect.append(option);
+                });
+                if (selectedServiceId) serviceSelect.value = selectedServiceId;
+                refreshLinePrice(line);
+            }
+
+            function refreshLinePrice(line) {
+                const rate = priceFor(line.querySelector('[data-category]').value, line.querySelector('[data-service]').value);
+                const priceElement = line.querySelector('[data-unit-price]');
+                priceElement.textContent = rate ? `${money.format(rate.Price)} FCFA` : 'Choisir un service';
+                recalculate();
+            }
+
+            function recalculate() {
+                let base = 0;
+                linesContainer.querySelectorAll('[data-order-line]').forEach(line => {
+                    const rate = priceFor(line.querySelector('[data-category]').value, line.querySelector('[data-service]').value);
+                    const quantity = Number(line.querySelector('[data-quantity]').value || 0);
+                    if (rate && quantity > 0) base += rate.Price * quantity;
+                });
+                const express = document.getElementById('Form_Express').checked ? base * Number(expressPercent) / 100 : 0;
+                const collection = document.getElementById('Form_HomeCollection').checked ? Number(collectionFee) : 0;
+                const delivery = document.getElementById('Form_HomeDelivery').checked ? Number(deliveryFee) : 0;
+                document.getElementById('base-total').textContent = `${money.format(base)} FCFA`;
+                document.getElementById('express-total').textContent = `${money.format(express)} FCFA`;
+                document.getElementById('collection-total').textContent = `${money.format(collection)} FCFA`;
+                document.getElementById('delivery-total').textContent = `${money.format(delivery)} FCFA`;
+                document.getElementById('grand-total').textContent = `${money.format(base + express + collection + delivery)} FCFA`;
+            }
+
+            function addLine(index, values = {}) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = template.innerHTML.replaceAll('__index__', index);
+                const line = wrapper.firstElementChild;
+                line.querySelector('[data-line-number]').textContent = index + 1;
+                const categorySelect = line.querySelector('[data-category]');
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.Id;
+                    option.textContent = category.Name;
+                    categorySelect.append(option);
+                });
+                categorySelect.value = values.CategoryId || '';
+                line.querySelector('[data-quantity]').value = values.Quantity || 1;
+                line.querySelector('[data-color]').value = values.Color || '';
+                line.querySelector('[data-brand]').value = values.Brand || '';
+                line.querySelector('[data-condition]').value = values.ReceptionCondition || '';
+                line.querySelector('[data-notes]').value = values.Notes || '';
+                refreshServices(line, values.ServiceId || 0);
+                categorySelect.addEventListener('change', () => refreshServices(line));
+                line.querySelector('[data-service]').addEventListener('change', () => refreshLinePrice(line));
+                line.querySelector('[data-quantity]').addEventListener('input', recalculate);
+                line.querySelector('[data-remove-line]').addEventListener('click', () => {
+                    line.remove();
+                    reindexLines();
+                    recalculate();
+                });
+                linesContainer.append(line);
+                recalculate();
+            }
+
+            function reindexLines() {
+                linesContainer.querySelectorAll('[data-order-line]').forEach((line, index) => {
+                    line.querySelector('[data-line-number]').textContent = index + 1;
+                    line.querySelectorAll('[name]').forEach(input => {
+                        input.name = input.name.replace(/Form\.Lines\[\d+\]/, `Form.Lines[${index}]`);
+                    });
+                });
+            }
+
+            document.getElementById('add-line').addEventListener('click', () =>
+                addLine(linesContainer.querySelectorAll('[data-order-line]').length));
+            ['Form_Express', 'Form_HomeCollection', 'Form_HomeDelivery'].forEach(id =>
+                document.getElementById(id).addEventListener('change', recalculate));
+            (initialLines.length ? initialLines : [{}]).forEach((line, index) => addLine(index, line));
+        })();
+    </script>
+}

@@ -304,6 +304,95 @@ namespace Pressing.Data.Migrations
                     b.ToTable("GarmentCategories");
                 });
 
+            modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("CollectionFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("ExpectedReadyAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Express")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("ExpressSurcharge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("HomeCollection")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HomeDelivery")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("LaundryOrders", t =>
+                        {
+                            t.HasCheckConstraint("CK_LaundryOrders_AmountPaid_NonNegative", "\"AmountPaid\" >= 0");
+
+                            t.HasCheckConstraint("CK_LaundryOrders_Total_NonNegative", "\"TotalAmount\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Pressing.Models.LaundryService", b =>
                 {
                     b.Property<int>("Id")
@@ -331,6 +420,106 @@ namespace Pressing.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("LaundryServices");
+                });
+
+            modelBuilder.Entity("Pressing.Models.OrderLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Brand")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("LaundryOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReceptionCondition")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("ServiceTariffId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LaundryOrderId");
+
+                    b.HasIndex("ServiceTariffId");
+
+                    b.ToTable("OrderLines");
+                });
+
+            modelBuilder.Entity("Pressing.Models.OrderStatusHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LaundryOrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("LaundryOrderId", "ChangedAtUtc");
+
+                    b.ToTable("OrderStatusHistories");
                 });
 
             modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>
@@ -433,6 +622,62 @@ namespace Pressing.Data.Migrations
                     b.Navigation("ApplicationUser");
                 });
 
+            modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
+                {
+                    b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.Customer", "Customer")
+                        .WithMany("Orders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Pressing.Models.OrderLine", b =>
+                {
+                    b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("LaundryOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.ServiceTariff", "ServiceTariff")
+                        .WithMany()
+                        .HasForeignKey("ServiceTariffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("LaundryOrder");
+
+                    b.Navigation("ServiceTariff");
+                });
+
+            modelBuilder.Entity("Pressing.Models.OrderStatusHistory", b =>
+                {
+                    b.HasOne("Pressing.Models.LaundryOrder", "LaundryOrder")
+                        .WithMany("StatusHistory")
+                        .HasForeignKey("LaundryOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LaundryOrder");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>
                 {
                     b.HasOne("Pressing.Models.GarmentCategory", "GarmentCategory")
@@ -452,9 +697,21 @@ namespace Pressing.Data.Migrations
                     b.Navigation("LaundryService");
                 });
 
+            modelBuilder.Entity("Pressing.Models.Customer", b =>
+                {
+                    b.Navigation("Orders");
+                });
+
             modelBuilder.Entity("Pressing.Models.GarmentCategory", b =>
                 {
                     b.Navigation("Tariffs");
+                });
+
+            modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("StatusHistory");
                 });
 
             modelBuilder.Entity("Pressing.Models.LaundryService", b =>

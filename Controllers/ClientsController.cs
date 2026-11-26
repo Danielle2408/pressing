@@ -22,9 +22,10 @@ public sealed class ClientsController(ApplicationDbContext database) : Controlle
         {
             var normalizedPhone = NormalizePhone(trimmed);
             var namePart = trimmed.ToLowerInvariant();
-            customers = customers.Where(customer =>
-                customer.NormalizedPhone.Contains(normalizedPhone) ||
-                customer.FullName.ToLower().Contains(namePart));
+            customers = string.IsNullOrEmpty(normalizedPhone)
+                ? customers.Where(customer => customer.FullName.ToLower().Contains(namePart))
+                : customers.Where(customer => customer.NormalizedPhone.Contains(normalizedPhone) ||
+                                               customer.FullName.ToLower().Contains(namePart));
         }
 
         var result = await customers

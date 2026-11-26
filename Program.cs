@@ -7,6 +7,7 @@ using Pressing.Security;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<OrderSettings>(builder.Configuration.GetSection("Ordering"));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Pressing")));
 

@@ -1,0 +1,278 @@
+using System.Security.Claims;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Pressing.Data;
+using Pressing.Models;
+using Pressing.Security;
+using Pressing.ViewModels;
+
+namespace Pressing.Controllers;
+
+[Authorize(Roles = Roles.Administrator + "," + Roles.Operator)]
+[Route("Comptoir/Commandes/[action]")]
+public sealed class CommandesController(
+    ApplicationDbContext database,
+    IOptions<OrderSettings> orderOptions) : Controller
+{
+    private OrderSettings Settings => orderOptions.Value;
+
+    [HttpGet]
+    public async Task<IActionResult> Index(OrderStatus? status, string? query)
+    {
+        var orders = database.LaundryOrders.AsNoTracking()
+            .Include(order => order.Customer)
+            .AsQueryable();
+
+        if (status.HasValue)
+            orders = orders.Where(order => order.Status == status.Value);
+
+        var trimmed = query?.Trim();
+        if (!string.IsNullOrEmpty(trimmed))
+        {
+            var phone = NormalizePhone(trimmed);
+            var namePart = trimmed.ToLowerInvariant();
+            orders = string.IsNullOrEmpty(phone)
+                ? orders.Where(order => order.Number.Contains(trimmed) ||
+                                        order.Customer.FullName.ToLower().Contains(namePart))
+                : orders.Where(order => order.Number.Contains(trimmed) ||
+                                        order.Customer.FullName.ToLower().Contains(namePart) ||
+                                        order.Customer.NormalizedPhone.Contains(phone));
+        }
+
+        var result = await orders.OrderByDescending(order => order.CreatedAtUtc).Take(100).ToListAsync();
+        return View(new OrderListViewModel { Status = status, Query = trimmed, Orders = result });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Creer()
+    {
+        var form = new CreateOrderViewModel
+        {
+            ExpectedReadyAtLocal = DateTime.Now.AddDays(Math.Max(1, Settings.DefaultProcessingDays))
+        };
+        return View(await BuildCreatePageAsync(form));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Creer(OrderCreatePageViewModel page)
+    {
+        var model = page.Form;
+        if (model.Lines.Count is < 1 or > 30)
+            ModelState.AddModelError("Form.Lines", "Une commande doit contenir de 1 à 30 lignes d’articles.");
+
+        if (model.ExpectedReadyAtLocal <= DateTime.Now)
+            ModelState.AddModelError("Form.ExpectedReadyAtLocal", "La date prévue doit être dans le futur.");
+
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.Id == model.CustomerId);
+        if (customer is null)
+            ModelState.AddModelError("Form.CustomerId", "Le client sélectionné n’existe pas.");
+        else if ((model.HomeCollection || model.HomeDelivery) && string.IsNullOrWhiteSpace(customer.Address))
+            ModelState.AddModelError("Form.CustomerId", "Renseigne l’adresse du client avant une collecte ou livraison à domicile.");
+
+        if (!ModelState.IsValid || customer is null)
+            return View(await BuildCreatePageAsync(model));
+
+        var now = DateTime.UtcNow;
+        var orderLines = new List<OrderLine>();
+        var baseAmount = 0m;
+        foreach (var input in model.Lines)
+        {
+            var tariff = await database.ServiceTariffs
+                .Include(item => item.GarmentCategory)
+                .Include(item => item.LaundryService)
+                .Where(item => item.GarmentCategoryId == input.CategoryId &&
+                               item.LaundryServiceId == input.ServiceId &&
+                               item.GarmentCategory.IsActive && item.LaundryService.IsActive &&
+                               item.ValidFromUtc <= now &&
+                               (item.ValidUntilUtc == null || item.ValidUntilUtc > now))
+                .OrderByDescending(item => item.ValidFromUtc)
+                .FirstOrDefaultAsync();
+
+            if (tariff is null)
+            {
+                ModelState.AddModelError("Form.Lines", "Un des articles sélectionnés ne possède plus de tarif actif. Vérifie le catalogue.");
+                return View(await BuildCreatePageAsync(model));
+            }
+
+            var lineTotal = decimal.Round(tariff.Price * input.Quantity, 2);
+            baseAmount += lineTotal;
+            orderLines.Add(new OrderLine
+            {
+                ServiceTariffId = tariff.Id,
+                CategoryName = tariff.GarmentCategory.Name,
+                ServiceName = tariff.LaundryService.Name,
+                Quantity = input.Quantity,
+                UnitPrice = tariff.Price,
+                LineTotal = lineTotal,
+                Color = CleanOptional(input.Color),
+                Brand = CleanOptional(input.Brand),
+                ReceptionCondition = CleanOptional(input.ReceptionCondition),
+                Notes = CleanOptional(input.Notes)
+            });
+        }
+
+        var expressSurcharge = model.Express
+            ? decimal.Round(baseAmount * Settings.ExpressSurchargePercent / 100m, 2)
+            : 0m;
+        var collectionFee = model.HomeCollection ? Settings.HomeCollectionFee : 0m;
+        var deliveryFee = model.HomeDelivery ? Settings.HomeDeliveryFee : 0m;
+        var expectedReadyAt = TimeZoneInfo.ConvertTimeToUtc(
+            DateTime.SpecifyKind(model.ExpectedReadyAtLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Challenge();
+
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        var order = new LaundryOrder
+        {
+            Number = $"TEMP-{Guid.NewGuid():N}",
+            CustomerId = customer.Id,
+            CreatedByUserId = userId,
+            Status = OrderStatus.Received,
+            CreatedAtUtc = now,
+            ExpectedReadyAtUtc = expectedReadyAt,
+            Express = model.Express,
+            HomeCollection = model.HomeCollection,
+            HomeDelivery = model.HomeDelivery,
+            Notes = CleanOptional(model.Notes),
+            ExpressSurcharge = expressSurcharge,
+            CollectionFee = collectionFee,
+            DeliveryFee = deliveryFee,
+            TotalAmount = baseAmount + expressSurcharge + collectionFee + deliveryFee,
+            Lines = orderLines
+        };
+        order.StatusHistory.Add(new OrderStatusHistory
+        {
+            PreviousStatus = null,
+            NewStatus = OrderStatus.Received,
+            UserId = userId,
+            ChangedAtUtc = now
+        });
+
+        database.LaundryOrders.Add(order);
+        await database.SaveChangesAsync();
+        order.Number = $"PR-{now.Year}-{order.Id:D6}";
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        TempData["OrderSuccess"] = $"La commande {order.Number} a été créée.";
+        return RedirectToAction(nameof(Details), new { id = order.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Details(int id)
+    {
+        var order = await database.LaundryOrders.AsNoTracking()
+            .Include(item => item.Customer)
+            .Include(item => item.CreatedByUser)
+            .Include(item => item.Lines)
+            .Include(item => item.StatusHistory).ThenInclude(item => item.User)
+            .FirstOrDefaultAsync(item => item.Id == id);
+
+        if (order is null)
+            return NotFound();
+
+        var allowedStatuses = GetAllowedStatuses(order.Status)
+            .Where(status => status != OrderStatus.Cancelled || User.IsInRole(Roles.Administrator))
+            .ToList();
+        return View(new OrderDetailsViewModel { Order = order, AllowedStatuses = allowedStatuses });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangerStatut(int id, OrderStatus status, string? reason)
+    {
+        var order = await database.LaundryOrders.FirstOrDefaultAsync(item => item.Id == id);
+        if (order is null)
+            return NotFound();
+
+        var isAdmin = User.IsInRole(Roles.Administrator);
+        if (!GetAllowedStatuses(order.Status).Contains(status) ||
+            (status == OrderStatus.Cancelled && !isAdmin))
+        {
+            return Forbid();
+        }
+
+        var cleanReason = CleanOptional(reason);
+        if (status == OrderStatus.Cancelled && string.IsNullOrWhiteSpace(cleanReason))
+        {
+            TempData["OrderError"] = "Un motif est obligatoire pour annuler une commande.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (status == OrderStatus.Delivered && order.AmountPaid < order.TotalAmount)
+        {
+            TempData["OrderError"] = "Encaisse le solde de la commande avant de confirmer le retrait.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Challenge();
+
+        var previousStatus = order.Status;
+        order.Status = status;
+        if (status == OrderStatus.Cancelled)
+            order.CancellationReason = cleanReason;
+
+        database.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            LaundryOrderId = order.Id,
+            PreviousStatus = previousStatus,
+            NewStatus = status,
+            UserId = userId,
+            ChangedAtUtc = DateTime.UtcNow,
+            Reason = cleanReason
+        });
+        await database.SaveChangesAsync();
+
+        TempData["OrderSuccess"] = $"La commande est maintenant au statut « {status.ToFrench()} ».";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    private async Task<OrderCreatePageViewModel> BuildCreatePageAsync(CreateOrderViewModel form)
+    {
+        var now = DateTime.UtcNow;
+        var prices = await database.ServiceTariffs.AsNoTracking()
+            .Where(item => item.GarmentCategory.IsActive && item.LaundryService.IsActive &&
+                           item.ValidFromUtc <= now && (item.ValidUntilUtc == null || item.ValidUntilUtc > now))
+            .Select(item => new OrderPriceOptionViewModel
+            {
+                CategoryId = item.GarmentCategoryId,
+                ServiceId = item.LaundryServiceId,
+                ServiceName = item.LaundryService.Name,
+                Price = item.Price
+            })
+            .ToListAsync();
+
+        return new OrderCreatePageViewModel
+        {
+            Form = form,
+            Customers = await database.Customers.AsNoTracking().OrderBy(item => item.FullName).ToListAsync(),
+            Categories = await database.GarmentCategories.AsNoTracking().Where(item => item.IsActive)
+                .OrderBy(item => item.Name).ToListAsync(),
+            Services = await database.LaundryServices.AsNoTracking().Where(item => item.IsActive)
+                .OrderBy(item => item.Name).ToListAsync(),
+            Prices = prices,
+            Settings = Settings
+        };
+    }
+
+    private static IReadOnlyList<OrderStatus> GetAllowedStatuses(OrderStatus current) => current switch
+    {
+        OrderStatus.Received => [OrderStatus.Washing, OrderStatus.DryCleaning, OrderStatus.Cancelled],
+        OrderStatus.Washing or OrderStatus.DryCleaning => [OrderStatus.Ironing, OrderStatus.Ready, OrderStatus.Cancelled],
+        OrderStatus.Ironing => [OrderStatus.Ready, OrderStatus.Cancelled],
+        OrderStatus.Ready => [OrderStatus.Delivered],
+        _ => []
+    };
+
+    private static string NormalizePhone(string value) => Regex.Replace(value, @"[^0-9+]", string.Empty);
+
+    private static string? CleanOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
