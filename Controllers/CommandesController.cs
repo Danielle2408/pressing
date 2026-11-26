@@ -17,7 +17,8 @@ namespace Pressing.Controllers;
 public sealed class CommandesController(
     ApplicationDbContext database,
     IOptions<OrderSettings> orderOptions,
-    LoyaltyRewardService loyaltyRewards) : Controller
+    LoyaltyRewardService loyaltyRewards,
+    PromotionPricingService promotionPricing) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
 
@@ -81,6 +82,7 @@ public sealed class CommandesController(
         var now = DateTime.UtcNow;
         var orderLines = new List<OrderLine>();
         var baseAmount = 0m;
+        var categoryAmounts = new Dictionary<int, decimal>();
         foreach (var input in model.Lines)
         {
             var tariff = await database.ServiceTariffs
@@ -102,6 +104,7 @@ public sealed class CommandesController(
 
             var lineTotal = decimal.Round(tariff.Price * input.Quantity, 2);
             baseAmount += lineTotal;
+            categoryAmounts[input.CategoryId] = categoryAmounts.GetValueOrDefault(input.CategoryId) + lineTotal;
             orderLines.Add(new OrderLine
             {
                 ServiceTariffId = tariff.Id,
@@ -122,6 +125,12 @@ public sealed class CommandesController(
             : 0m;
         var collectionFee = model.HomeCollection ? Settings.HomeCollectionFee : 0m;
         var deliveryFee = model.HomeDelivery ? Settings.HomeDeliveryFee : 0m;
+        var promotion = await promotionPricing.ApplyAsync(model.PromoCode, categoryAmounts);
+        if (promotion.Error is not null)
+        {
+            ModelState.AddModelError("Form.PromoCode", promotion.Error);
+            return View(await BuildCreatePageAsync(model));
+        }
         var expectedReadyAt = TimeZoneInfo.ConvertTimeToUtc(
             DateTime.SpecifyKind(model.ExpectedReadyAtLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -144,7 +153,10 @@ public sealed class CommandesController(
             ExpressSurcharge = expressSurcharge,
             CollectionFee = collectionFee,
             DeliveryFee = deliveryFee,
-            TotalAmount = baseAmount + expressSurcharge + collectionFee + deliveryFee,
+            PromotionId = promotion.Promotion?.Id,
+            PromoCodeSnapshot = promotion.Promotion?.Code,
+            DiscountAmount = promotion.DiscountAmount,
+            TotalAmount = baseAmount + expressSurcharge + collectionFee + deliveryFee - promotion.DiscountAmount,
             Lines = orderLines
         };
         order.StatusHistory.Add(new OrderStatusHistory

@@ -20,7 +20,8 @@ public sealed class EspaceClientController(
     IOptions<LoyaltySettings> loyaltyOptions,
     UserManager<ApplicationUser> users,
     SignInManager<ApplicationUser> signInManager,
-    LoyaltyRewardService loyaltyRewards) : Controller
+    LoyaltyRewardService loyaltyRewards,
+    PromotionPricingService promotionPricing) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
     [HttpGet]
@@ -149,6 +150,7 @@ public sealed class EspaceClientController(
         var now = DateTime.UtcNow;
         var lines = new List<OrderLine>();
         var baseAmount = 0m;
+        var categoryAmounts = new Dictionary<int, decimal>();
         foreach (var input in form.Lines)
         {
             if (input.Quantity is < 1 or > 100)
@@ -169,6 +171,7 @@ public sealed class EspaceClientController(
             }
             var lineTotal = decimal.Round(tariff.Price * input.Quantity, 2);
             baseAmount += lineTotal;
+            categoryAmounts[input.CategoryId] = categoryAmounts.GetValueOrDefault(input.CategoryId) + lineTotal;
             lines.Add(new OrderLine
             {
                 ServiceTariffId = tariff.Id, CategoryName = tariff.GarmentCategory.Name,
@@ -184,6 +187,12 @@ public sealed class EspaceClientController(
         var readyFrom = collectionAtUtc ?? now;
         var collectionFee = form.HomeCollection ? Settings.HomeCollectionFee : 0m;
         var deliveryFee = form.HomeDelivery ? Settings.HomeDeliveryFee : 0m;
+        var promotion = await promotionPricing.ApplyAsync(form.PromoCode, categoryAmounts);
+        if (promotion.Error is not null)
+        {
+            ModelState.AddModelError("Form.PromoCode", promotion.Error);
+            return View(await BuildRequestPageAsync(form));
+        }
         var order = new LaundryOrder
         {
             Number = $"TEMP-{Guid.NewGuid():N}", CustomerId = customer.Id, CreatedByUserId = userId!,
@@ -194,7 +203,9 @@ public sealed class EspaceClientController(
             CollectionAddress = CleanOptional(form.CollectionAddress), Notes = CleanOptional(form.Notes),
             DeliveryAddress = CleanOptional(form.DeliveryAddress),
             CollectionFee = collectionFee, DeliveryFee = deliveryFee,
-            TotalAmount = baseAmount + collectionFee + deliveryFee, Lines = lines
+            PromotionId = promotion.Promotion?.Id, PromoCodeSnapshot = promotion.Promotion?.Code,
+            DiscountAmount = promotion.DiscountAmount,
+            TotalAmount = baseAmount + collectionFee + deliveryFee - promotion.DiscountAmount, Lines = lines
         };
         order.StatusHistory.Add(new OrderStatusHistory
         {

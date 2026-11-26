@@ -64,6 +64,7 @@
                 <div class="form-check"><input asp-for="Form.HomeDelivery" class="form-check-input" /><label asp-for="Form.HomeDelivery" class="form-check-label">Je souhaite une livraison à domicile (+@Model.Settings.HomeDeliveryFee.ToString("N0") FCFA)</label></div>
                 <div id="delivery-fields" class="mt-3 d-none"><label asp-for="Form.DeliveryAddress" class="form-label">Adresse de livraison</label><input asp-for="Form.DeliveryAddress" class="form-control" maxlength="400" /></div>
                 <div class="mt-3"><label asp-for="Form.Notes" class="form-label">Remarque (facultatif)</label><textarea asp-for="Form.Notes" class="form-control" rows="3" maxlength="1000"></textarea></div>
+                <div class="mt-3"><label asp-for="Form.PromoCode" class="form-label">Code promotionnel (facultatif)</label><input asp-for="Form.PromoCode" class="form-control text-uppercase" maxlength="32" autocomplete="off" /><span asp-validation-for="Form.PromoCode" class="text-danger"></span></div>
                 <p class="small text-secondary mt-3 mb-0">Estimation hors frais éventuels. Le tarif final sera confirmé par le pressing. Aucun paiement ne sera demandé avant cette confirmation.</p>
             </div>
         </div>

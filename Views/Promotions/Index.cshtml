@@ -1,0 +1,32 @@
+@model PromotionListViewModel
+@{
+    ViewData["Title"] = "Promotions";
+}
+
+<section class="py-4">
+    <div class="mb-4"><span class="text-primary fw-semibold small text-uppercase">Administration</span><h1 class="display-6 fw-bold mt-2">Codes promotionnels</h1></div>
+    @if (TempData["PromotionSuccess"] is string success) { <div class="alert alert-success" role="status">@success</div> }
+    @if (TempData["PromotionError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    <div class="card border-0 shadow-sm mb-4"><div class="card-body p-4"><h2 class="h5">Créer un code</h2>
+        <form asp-action="Ajouter" method="post" class="row g-3 mt-1">
+            <div class="col-md-3"><label class="form-label" for="promo-code">Code</label><input class="form-control text-uppercase" id="promo-code" name="Code" minlength="3" maxlength="32" pattern="[A-Za-z0-9-]+" required /></div>
+            <div class="col-md-5"><label class="form-label" for="promo-description">Description</label><input class="form-control" id="promo-description" name="Description" maxlength="200" required /></div>
+            <div class="col-md-2"><label class="form-label" for="promo-kind">Réduction</label><select class="form-select" id="promo-kind" name="Kind"><option value="Percentage">Pourcentage</option><option value="FixedAmount">Montant fixe</option></select></div>
+            <div class="col-md-2"><label class="form-label" for="promo-value">Valeur</label><input class="form-control" id="promo-value" name="Value" type="number" min="0.01" step="0.01" required /></div>
+            <div class="col-md-4"><label class="form-label" for="promo-category">Catégorie ciblée</label><select class="form-select" id="promo-category" name="GarmentCategoryId"><option value="">Toutes les catégories</option>@foreach (var category in Model.Categories.Where(item => item.IsActive)) { <option value="@category.Id">@category.Name</option> }</select></div>
+            <div class="col-md-4"><label class="form-label" for="promo-start">Début</label><input class="form-control" id="promo-start" name="StartsAtLocal" type="datetime-local" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required /></div>
+            <div class="col-md-4"><label class="form-label" for="promo-end">Fin</label><input class="form-control" id="promo-end" name="EndsAtLocal" type="datetime-local" value="@DateTime.Now.AddDays(7).ToString("yyyy-MM-ddTHH:mm")" required /></div>
+            <div class="col-12"><div class="form-text">La réduction est plafonnée à la valeur des articles concernés. Le supplément express et la collecte/livraison ne sont pas réduits.</div><button class="btn btn-primary mt-3" type="submit">Créer le code</button></div>
+        </form>
+    </div></div>
+    <div class="card border-0 shadow-sm overflow-hidden"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Code</th><th>Description</th><th>Valeur</th><th>Catégorie</th><th>Validité</th><th>État</th><th></th></tr></thead><tbody>
+        @if (Model.Promotions.Count == 0) { <tr><td colspan="7" class="text-center text-secondary py-4">Aucun code promotionnel.</td></tr> }
+        @foreach (var promotion in Model.Promotions)
+        {
+            var value = promotion.Kind == PromotionKind.Percentage ? $"{promotion.Value:N0}%" : $"{promotion.Value:N0} FCFA";
+            <tr><td class="fw-semibold">@promotion.Code</td><td>@promotion.Description</td><td>@value</td><td>@(promotion.GarmentCategory?.Name ?? "Toutes")</td><td>@promotion.StartsAtUtc.ToLocalTime().ToString("dd/MM/yyyy") – @promotion.EndsAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td><td>@if (promotion.IsActive && promotion.EndsAtUtc > DateTime.UtcNow) { <span class="badge text-bg-success">Actif</span> } else { <span class="badge text-bg-secondary">Inactif</span> }</td><td class="text-end"><form asp-action="BasculerActivation" method="post"><input type="hidden" name="id" value="@promotion.Id" /><button class="btn btn-sm btn-outline-secondary" type="submit">@(promotion.IsActive ? "Désactiver" : "Réactiver")</button></form></td></tr>
+        }
+        </tbody>
+    </table></div></div>
+</section>

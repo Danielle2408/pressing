@@ -22,6 +22,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<CustomerClaim> CustomerClaims => Set<CustomerClaim>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<LoyaltyLedgerEntry> LoyaltyLedgerEntries => Set<LoyaltyLedgerEntry>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -80,6 +81,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(item => item.ExpressSurcharge).HasPrecision(18, 2);
             entity.Property(item => item.CollectionFee).HasPrecision(18, 2);
             entity.Property(item => item.DeliveryFee).HasPrecision(18, 2);
+            entity.Property(item => item.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(item => item.PromoCodeSnapshot).HasMaxLength(32);
             entity.Property(item => item.Notes).HasMaxLength(1000);
             entity.Property(item => item.CancellationReason).HasMaxLength(500);
             entity.Property(item => item.CollectionAddress).HasMaxLength(400);
@@ -97,6 +100,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.CreatedByUser).WithMany()
                 .HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.Promotion).WithMany().HasForeignKey(item => item.PromotionId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<OrderLine>(entity =>
@@ -225,6 +229,20 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.LaundryOrder).WithMany().HasForeignKey(item => item.LaundryOrderId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint("CK_LoyaltyLedgerEntries_Points_Positive", "\"Points\" > 0"));
+        });
+
+        builder.Entity<Promotion>(entity =>
+        {
+            entity.Property(item => item.Code).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.NormalizedCode).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.Description).HasMaxLength(200).IsRequired();
+            entity.Property(item => item.Kind).HasConversion<string>().HasMaxLength(20);
+            entity.Property(item => item.Value).HasPrecision(18, 2);
+            entity.HasIndex(item => item.NormalizedCode).IsUnique();
+            entity.HasIndex(item => new { item.IsActive, item.StartsAtUtc, item.EndsAtUtc });
+            entity.HasOne(item => item.GarmentCategory).WithMany().HasForeignKey(item => item.GarmentCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.CreatedByUser).WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_Promotions_Value_Positive", "\"Value\" > 0"));
         });
     }
 }

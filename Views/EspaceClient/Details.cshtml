@@ -158,6 +158,10 @@
                             </div>
                         }
                     }
+                    @if (order.DiscountAmount > 0)
+                    {
+                        <div class="small text-success mt-2">Code @order.PromoCodeSnapshot : −@order.DiscountAmount.ToString("N0") FCFA</div>
+                    }
                     <p class="small text-secondary mt-3 mb-0">Les reçus sont disponibles auprès du pressing.</p>
                 </div>
             </div>

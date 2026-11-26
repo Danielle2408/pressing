@@ -69,6 +69,8 @@ public sealed class CustomerOrderRequestViewModel
     public string? CollectionAddress { get; set; }
     public string? DeliveryAddress { get; set; }
     public string? Notes { get; set; }
+    [System.ComponentModel.DataAnnotations.StringLength(32)]
+    public string? PromoCode { get; set; }
 }
 
 public sealed class CustomerOrderRequestPageViewModel

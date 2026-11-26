@@ -136,6 +136,10 @@
                     {
                         <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Collecte</span><span>@order.CollectionFee.ToString("N0") FCFA</span></div>
                     }
+                    @if (order.DiscountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Promotion @order.PromoCodeSnapshot</span><span class="text-success">−@order.DiscountAmount.ToString("N0") FCFA</span></div>
+                    }
                     @if (order.DeliveryFee > 0)
                     {
                         <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Livraison</span><span>@order.DeliveryFee.ToString("N0") FCFA</span></div>

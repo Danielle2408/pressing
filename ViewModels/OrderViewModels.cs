@@ -54,6 +54,10 @@ public sealed class CreateOrderViewModel
     [Display(Name = "Remarques de la commande")]
     public string? Notes { get; set; }
 
+    [StringLength(32)]
+    [Display(Name = "Code promotionnel")]
+    public string? PromoCode { get; set; }
+
     public List<OrderLineInputViewModel> Lines { get; set; } = [new()];
 }
 

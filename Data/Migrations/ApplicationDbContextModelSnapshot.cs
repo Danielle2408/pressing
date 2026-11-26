@@ -538,6 +538,10 @@ namespace Pressing.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTime>("ExpectedReadyAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -569,6 +573,13 @@ namespace Pressing.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("PromoCodeSnapshot")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int?>("PromotionId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -588,6 +599,8 @@ namespace Pressing.Data.Migrations
 
                     b.HasIndex("Number")
                         .IsUnique();
+
+                    b.HasIndex("PromotionId");
 
                     b.HasIndex("Status");
 
@@ -845,6 +858,71 @@ namespace Pressing.Data.Migrations
                     b.ToTable("OrderStatusHistories");
                 });
 
+            modelBuilder.Entity("Pressing.Models.Promotion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("EndsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("GarmentCategoryId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("NormalizedCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("GarmentCategoryId");
+
+                    b.HasIndex("NormalizedCode")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "StartsAtUtc", "EndsAtUtc");
+
+                    b.ToTable("Promotions", t =>
+                        {
+                            t.HasCheckConstraint("CK_Promotions_Value_Positive", "\"Value\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>
                 {
                     b.Property<int>("Id")
@@ -1100,9 +1178,16 @@ namespace Pressing.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Pressing.Models.Promotion", "Promotion")
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Customer");
+
+                    b.Navigation("Promotion");
                 });
 
             modelBuilder.Entity("Pressing.Models.LoyaltyLedgerEntry", b =>
@@ -1178,6 +1263,24 @@ namespace Pressing.Data.Migrations
                     b.Navigation("LaundryOrder");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Pressing.Models.Promotion", b =>
+                {
+                    b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.GarmentCategory", "GarmentCategory")
+                        .WithMany()
+                        .HasForeignKey("GarmentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("GarmentCategory");
                 });
 
             modelBuilder.Entity("Pressing.Models.ServiceTariff", b =>

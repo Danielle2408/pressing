@@ -25,7 +25,9 @@ public static partial class ReceiptPdfGenerator
         lines.AddRange(order.Lines.Select(item =>
             $"{item.Quantity} x {item.CategoryName} - {item.ServiceName} : {item.LineTotal.ToString("N0", CultureInfo.InvariantCulture)} FCFA"));
         lines.Add("-----------------------------------------------");
-        lines.Add($"Total commande : {order.TotalAmount.ToString("N0", CultureInfo.InvariantCulture)} FCFA");
+        lines.Add($"Sous-total : {(order.TotalAmount + order.DiscountAmount).ToString("N0", CultureInfo.InvariantCulture)} FCFA");
+        if (order.DiscountAmount > 0) lines.Add($"Reduction {order.PromoCodeSnapshot} : -{order.DiscountAmount.ToString("N0", CultureInfo.InvariantCulture)} FCFA");
+        lines.Add($"Total a payer : {order.TotalAmount.ToString("N0", CultureInfo.InvariantCulture)} FCFA");
         lines.Add($"Total paye : {order.AmountPaid.ToString("N0", CultureInfo.InvariantCulture)} FCFA");
         lines.Add($"Solde restant : {(order.TotalAmount - order.AmountPaid).ToString("N0", CultureInfo.InvariantCulture)} FCFA");
         lines.Add($"Paiement recu : {payment.Amount.ToString("N0", CultureInfo.InvariantCulture)} FCFA");

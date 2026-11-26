@@ -68,6 +68,11 @@
                                 <textarea asp-for="Form.Notes" class="form-control" rows="2" placeholder="Instructions générales"></textarea>
                                 <span asp-validation-for="Form.Notes" class="text-danger"></span>
                             </div>
+                            <div class="col-md-6">
+                                <label asp-for="Form.PromoCode" class="form-label"></label>
+                                <input asp-for="Form.PromoCode" class="form-control text-uppercase" autocomplete="off" />
+                                <span asp-validation-for="Form.PromoCode" class="text-danger"></span>
+                            </div>
                         </div>
                     </div>
                 </div>

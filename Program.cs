@@ -10,6 +10,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<OrderSettings>(builder.Configuration.GetSection("Ordering"));
 builder.Services.Configure<LoyaltySettings>(builder.Configuration.GetSection("Loyalty"));
 builder.Services.AddScoped<Pressing.Services.LoyaltyRewardService>();
+builder.Services.AddScoped<Pressing.Services.PromotionPricingService>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Pressing")));
 
