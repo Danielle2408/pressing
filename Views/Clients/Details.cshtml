@@ -1,0 +1,25 @@
+@model CustomerDetailsViewModel
+@{
+    ViewData["Title"] = "Fiche client";
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour aux clients</a>
+    @if (TempData["CustomerSuccess"] is string success)
+    {
+        <div class="alert alert-success mt-3" role="status">@success</div>
+    }
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body p-4 p-md-5">
+            <span class="text-primary fw-semibold small text-uppercase">Fiche client</span>
+            <h1 class="h2 mt-2">@Model.Customer.FullName</h1>
+            <dl class="row mt-4 mb-0">
+                <dt class="col-sm-3">Téléphone</dt><dd class="col-sm-9">@Model.Customer.PhoneNumber</dd>
+                <dt class="col-sm-3">Adresse</dt><dd class="col-sm-9">@(Model.Customer.Address ?? "Non renseignée")</dd>
+                <dt class="col-sm-3">Points fidélité</dt><dd class="col-sm-9">@Model.Customer.LoyaltyPoints</dd>
+                <dt class="col-sm-3">Client depuis</dt><dd class="col-sm-9">@Model.Customer.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</dd>
+            </dl>
+            <div class="alert alert-light border mt-4 mb-0">L’historique des commandes sera visible ici dès l’activation du module de commandes.</div>
+        </div>
+    </div>
+</section>

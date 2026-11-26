@@ -1,0 +1,54 @@
+@model CustomerSearchViewModel
+@{
+    ViewData["Title"] = "Clients";
+}
+
+<section class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <span class="text-primary fw-semibold small text-uppercase">Comptoir</span>
+            <h1 class="display-6 fw-bold mt-2 mb-0">Clients</h1>
+        </div>
+        <a asp-action="Creer" class="btn btn-primary">Nouveau client</a>
+    </div>
+
+    @if (TempData["CustomerSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-sm-9 col-md-10">
+            <label class="visually-hidden" for="query">Nom ou téléphone</label>
+            <input class="form-control" id="query" name="query" value="@Model.Query" placeholder="Rechercher par nom ou téléphone" />
+        </div>
+        <div class="col-sm-3 col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Rechercher</button></div>
+    </form>
+
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>Nom</th><th>Téléphone</th><th>Inscription</th><th></th></tr></thead>
+                <tbody>
+                @if (Model.Customers.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-secondary py-5">Aucun client trouvé.</td></tr>
+                }
+                @foreach (var customer in Model.Customers)
+                {
+                    <tr>
+                        <td class="fw-semibold">@customer.FullName</td>
+                        <td>@customer.PhoneNumber</td>
+                        <td>@customer.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td class="text-end"><a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-outline-secondary">Fiche client</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @if (Model.Customers.Count == 100)
+    {
+        <p class="text-secondary small mt-2">Les 100 résultats les plus récents sont affichés. Ajoute un nom ou un téléphone pour affiner la recherche.</p>
+    }
+</section>

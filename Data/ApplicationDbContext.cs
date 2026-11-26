@@ -10,6 +10,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<GarmentCategory> GarmentCategories => Set<GarmentCategory>();
     public DbSet<LaundryService> LaundryServices => Set<LaundryService>();
     public DbSet<ServiceTariff> ServiceTariffs => Set<ServiceTariff>();
+    public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -44,6 +45,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany(service => service.Tariffs)
                 .HasForeignKey(item => item.LaundryServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Customer>(entity =>
+        {
+            entity.Property(item => item.FullName).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.PhoneNumber).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.NormalizedPhone).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.Address).HasMaxLength(400);
+            entity.HasIndex(item => item.NormalizedPhone).IsUnique();
+            entity.HasOne(item => item.ApplicationUser)
+                .WithOne()
+                .HasForeignKey<Customer>(item => item.ApplicationUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }
