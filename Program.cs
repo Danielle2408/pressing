@@ -13,6 +13,7 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 builder.Services.AddScoped<Pressing.Services.LoyaltyRewardService>();
 builder.Services.AddScoped<Pressing.Services.PromotionPricingService>();
 builder.Services.AddScoped<Pressing.Services.SmtpEmailSender>();
+builder.Services.AddScoped<Pressing.Services.CustomerStatusEmailService>();
 builder.Services.AddScoped<Pressing.Services.AuditLogService>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Pressing")));

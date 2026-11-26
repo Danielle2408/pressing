@@ -20,7 +20,8 @@ public sealed class CommandesController(
     IOptions<OrderSettings> orderOptions,
     LoyaltyRewardService loyaltyRewards,
     PromotionPricingService promotionPricing,
-    AuditLogService auditLog) : Controller
+    AuditLogService auditLog,
+    CustomerStatusEmailService statusEmail) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
 
@@ -287,8 +288,9 @@ public sealed class CommandesController(
             ChangedAtUtc = DateTime.UtcNow,
             Reason = cleanReason
         });
-        var customerUserId = await database.Customers.Where(item => item.Id == order.CustomerId)
-            .Select(item => item.ApplicationUserId).FirstOrDefaultAsync();
+        var customerInfo = await database.Customers.Where(item => item.Id == order.CustomerId)
+            .Select(item => new { item.ApplicationUserId, item.FullName }).FirstOrDefaultAsync();
+        var customerUserId = customerInfo?.ApplicationUserId;
         if (!string.IsNullOrWhiteSpace(customerUserId))
         {
             database.UserNotifications.Add(new UserNotification
@@ -301,6 +303,8 @@ public sealed class CommandesController(
         auditLog.Record(userId, "Changement de statut", "Commande", order.Id,
             $"{previousStatus.ToFrench()} vers {status.ToFrench()}.");
         await database.SaveChangesAsync();
+
+        await statusEmail.SendAsync(order, customerInfo?.FullName ?? "Bonjour", status);
 
         TempData["OrderSuccess"] = $"La commande est maintenant au statut « {status.ToFrench()} ».";
         return RedirectToAction(nameof(Details), new { id });
