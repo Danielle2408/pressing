@@ -24,6 +24,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<LoyaltyLedgerEntry> LoyaltyLedgerEntries => Set<LoyaltyLedgerEntry>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -255,6 +256,16 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(item => item.CreatedAtUtc);
             entity.HasIndex(item => new { item.Entity, item.EntityId });
             entity.HasOne(item => item.User).WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CustomerAddress>(entity =>
+        {
+            entity.Property(item => item.Label).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Address).HasMaxLength(400).IsRequired();
+            entity.HasIndex(item => new { item.CustomerId, item.IsActive });
+            entity.HasIndex(item => item.CustomerId).IsUnique().HasFilter("\"IsActive\" AND \"IsDefault\"");
+            entity.HasOne(item => item.Customer).WithMany(customer => customer.Addresses)
+                .HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -367,6 +367,47 @@ namespace Pressing.Data.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("Pressing.Models.CustomerAddress", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" AND \"IsDefault\"");
+
+                    b.HasIndex("CustomerId", "IsActive");
+
+                    b.ToTable("CustomerAddresses");
+                });
+
             modelBuilder.Entity("Pressing.Models.CustomerClaim", b =>
                 {
                     b.Property<int>("Id")
@@ -1175,6 +1216,17 @@ namespace Pressing.Data.Migrations
                     b.Navigation("ApplicationUser");
                 });
 
+            modelBuilder.Entity("Pressing.Models.CustomerAddress", b =>
+                {
+                    b.HasOne("Pressing.Models.Customer", "Customer")
+                        .WithMany("Addresses")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
             modelBuilder.Entity("Pressing.Models.CustomerClaim", b =>
                 {
                     b.HasOne("Pressing.Models.ApplicationUser", "CreatedByUser")
@@ -1390,6 +1442,8 @@ namespace Pressing.Data.Migrations
 
             modelBuilder.Entity("Pressing.Models.Customer", b =>
                 {
+                    b.Navigation("Addresses");
+
                     b.Navigation("Orders");
                 });
 

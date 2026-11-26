@@ -12,4 +12,5 @@ public sealed class Customer
     public int LoyaltyPoints { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public ICollection<LaundryOrder> Orders { get; set; } = new List<LaundryOrder>();
+    public ICollection<CustomerAddress> Addresses { get; set; } = new List<CustomerAddress>();
 }

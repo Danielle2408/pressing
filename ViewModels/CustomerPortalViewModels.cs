@@ -66,7 +66,9 @@ public sealed class CustomerOrderRequestViewModel
     public bool HomeCollection { get; set; }
     public bool HomeDelivery { get; set; }
     public DateTime? CollectionAtLocal { get; set; }
+    public int? CollectionAddressId { get; set; }
     public string? CollectionAddress { get; set; }
+    public int? DeliveryAddressId { get; set; }
     public string? DeliveryAddress { get; set; }
     public string? Notes { get; set; }
     [System.ComponentModel.DataAnnotations.StringLength(32)]
@@ -79,5 +81,22 @@ public sealed class CustomerOrderRequestPageViewModel
     public IReadOnlyList<GarmentCategory> Categories { get; init; } = [];
     public IReadOnlyList<LaundryService> Services { get; init; } = [];
     public IReadOnlyList<OrderPriceOptionViewModel> Prices { get; init; } = [];
+    public IReadOnlyList<CustomerAddress> Addresses { get; init; } = [];
     public OrderSettings Settings { get; init; } = new();
+}
+
+public sealed class CustomerAddressPageViewModel
+{
+    public IReadOnlyList<CustomerAddress> Addresses { get; init; } = [];
+    public AddCustomerAddressViewModel NewAddress { get; init; } = new();
+}
+
+public sealed class AddCustomerAddressViewModel
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(80, MinimumLength = 2)]
+    public string Label { get; set; } = string.Empty;
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(400, MinimumLength = 5)]
+    public string Address { get; set; } = string.Empty;
 }

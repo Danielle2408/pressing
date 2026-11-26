@@ -5,7 +5,7 @@
 
 <section class="py-4">
     <a asp-action="Index" class="text-decoration-none">← Retour à mon espace</a>
-    <div class="mt-3 mb-4"><span class="text-primary fw-semibold small text-uppercase">Espace client</span><h1 class="display-6 fw-bold mt-2">Mon profil</h1></div>
+    <div class="mt-3 mb-4"><span class="text-primary fw-semibold small text-uppercase">Espace client</span><h1 class="display-6 fw-bold mt-2">Mon profil</h1><a asp-action="Adresses" class="btn btn-outline-primary btn-sm mt-2">Gérer mes adresses enregistrées</a></div>
     @if (TempData["ProfileSuccess"] is string success) { <div class="alert alert-success" role="status">@success</div> }
     @if (TempData["PasswordError"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
     <div class="row g-4">

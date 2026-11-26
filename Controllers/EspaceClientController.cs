@@ -88,6 +88,80 @@ public sealed class EspaceClientController(
         return RedirectToAction(nameof(Profil));
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Adresses()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.AsNoTracking().FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
+        return View(new CustomerAddressPageViewModel { Addresses = await ActiveAddresses(customer.Id) });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AjouterAdresse(AddCustomerAddressViewModel model)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
+        if (!ModelState.IsValid)
+            return View("Adresses", new CustomerAddressPageViewModel { Addresses = await ActiveAddresses(customer.Id), NewAddress = model });
+        var first = !await database.CustomerAddresses.AnyAsync(item => item.CustomerId == customer.Id && item.IsActive);
+        var address = new CustomerAddress
+        {
+            CustomerId = customer.Id, Label = model.Label.Trim(), Address = model.Address.Trim(),
+            IsDefault = first, IsActive = true, CreatedAtUtc = DateTime.UtcNow
+        };
+        database.CustomerAddresses.Add(address);
+        await database.SaveChangesAsync();
+        auditLog.Record(userId!, "Ajout", "Adresse client", address.Id, $"Adresse « {address.Label} » ajoutée.");
+        await database.SaveChangesAsync();
+        TempData["AddressSuccess"] = "L’adresse a été enregistrée.";
+        return RedirectToAction(nameof(Adresses));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DefinirAdresseParDefaut(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
+        var addresses = await database.CustomerAddresses.Where(item => item.CustomerId == customer.Id && item.IsActive).ToListAsync();
+        var selected = addresses.SingleOrDefault(item => item.Id == id);
+        if (selected is null) return NotFound();
+        foreach (var address in addresses) address.IsDefault = address.Id == id;
+        await database.SaveChangesAsync();
+        auditLog.Record(userId!, "Adresse par défaut", "Adresse client", id, $"Adresse « {selected.Label} » définie par défaut.");
+        await database.SaveChangesAsync();
+        TempData["AddressSuccess"] = "L’adresse par défaut a été mise à jour.";
+        return RedirectToAction(nameof(Adresses));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DesactiverAdresse(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
+        var address = await database.CustomerAddresses.FirstOrDefaultAsync(item => item.Id == id && item.CustomerId == customer.Id && item.IsActive);
+        if (address is null) return NotFound();
+        address.IsActive = false;
+        address.IsDefault = false;
+        if (address.IsDefault)
+        {
+            var replacement = await database.CustomerAddresses.Where(item => item.CustomerId == customer.Id && item.IsActive && item.Id != id)
+                .OrderBy(item => item.CreatedAtUtc).FirstOrDefaultAsync();
+            if (replacement is not null) replacement.IsDefault = true;
+        }
+        await database.SaveChangesAsync();
+        auditLog.Record(userId!, "Désactivation", "Adresse client", id, $"Adresse « {address.Label} » désactivée.");
+        await database.SaveChangesAsync();
+        TempData["AddressSuccess"] = "L’adresse a été retirée de tes adresses enregistrées.";
+        return RedirectToAction(nameof(Adresses));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangerMotDePasse(ChangeCustomerPasswordViewModel model)
@@ -116,11 +190,12 @@ public sealed class EspaceClientController(
     public async Task<IActionResult> NouvelleDemande()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!await database.Customers.AnyAsync(item => item.ApplicationUserId == userId)) return NotFound();
+        var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
+        if (customer is null) return NotFound();
         return View(await BuildRequestPageAsync(new CustomerOrderRequestViewModel
         {
             CollectionAtLocal = DateTime.Now.AddDays(1)
-        }));
+        }, customer.Id));
     }
 
     [HttpPost]
@@ -132,12 +207,8 @@ public sealed class EspaceClientController(
             ModelState.AddModelError("Form.Lines", "Une demande doit contenir de 1 à 30 lignes d’articles.");
         if (form.HomeCollection && (form.CollectionAtLocal is null || form.CollectionAtLocal <= DateTime.Now))
             ModelState.AddModelError("Form.CollectionAtLocal", "Choisis une date de collecte future.");
-        if (form.HomeCollection && string.IsNullOrWhiteSpace(form.CollectionAddress))
-            ModelState.AddModelError("Form.CollectionAddress", "L’adresse est requise pour une collecte à domicile.");
         if (form.CollectionAddress?.Length > 400)
             ModelState.AddModelError("Form.CollectionAddress", "L’adresse ne peut pas dépasser 400 caractères.");
-        if (form.HomeDelivery && string.IsNullOrWhiteSpace(form.DeliveryAddress))
-            ModelState.AddModelError("Form.DeliveryAddress", "L’adresse est requise pour une livraison à domicile.");
         if (form.DeliveryAddress?.Length > 400)
             ModelState.AddModelError("Form.DeliveryAddress", "L’adresse ne peut pas dépasser 400 caractères.");
         if (form.Notes?.Length > 1000)
@@ -146,7 +217,17 @@ public sealed class EspaceClientController(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
         if (customer is null) return NotFound();
-        if (!ModelState.IsValid) return View(await BuildRequestPageAsync(form));
+        if (form.HomeCollection)
+        {
+            form.CollectionAddress = await ResolveAddressAsync(form.CollectionAddressId, form.CollectionAddress, customer.Id);
+            if (string.IsNullOrWhiteSpace(form.CollectionAddress)) ModelState.AddModelError("Form.CollectionAddress", "L’adresse est requise pour une collecte à domicile.");
+        }
+        if (form.HomeDelivery)
+        {
+            form.DeliveryAddress = await ResolveAddressAsync(form.DeliveryAddressId, form.DeliveryAddress, customer.Id);
+            if (string.IsNullOrWhiteSpace(form.DeliveryAddress)) ModelState.AddModelError("Form.DeliveryAddress", "L’adresse est requise pour une livraison à domicile.");
+        }
+        if (!ModelState.IsValid) return View(await BuildRequestPageAsync(form, customer.Id));
 
         var now = DateTime.UtcNow;
         var lines = new List<OrderLine>();
@@ -157,7 +238,7 @@ public sealed class EspaceClientController(
             if (input.Quantity is < 1 or > 100)
             {
                 ModelState.AddModelError("Form.Lines", "Chaque quantité doit être comprise entre 1 et 100.");
-                return View(await BuildRequestPageAsync(form));
+                return View(await BuildRequestPageAsync(form, customer.Id));
             }
             var tariff = await database.ServiceTariffs.Include(item => item.GarmentCategory)
                 .Include(item => item.LaundryService)
@@ -168,7 +249,7 @@ public sealed class EspaceClientController(
             if (tariff is null)
             {
                 ModelState.AddModelError("Form.Lines", "Un article ou service n’a plus de tarif actif. Vérifie le catalogue.");
-                return View(await BuildRequestPageAsync(form));
+                return View(await BuildRequestPageAsync(form, customer.Id));
             }
             var lineTotal = decimal.Round(tariff.Price * input.Quantity, 2);
             baseAmount += lineTotal;
@@ -192,7 +273,7 @@ public sealed class EspaceClientController(
         if (promotion.Error is not null)
         {
             ModelState.AddModelError("Form.PromoCode", promotion.Error);
-            return View(await BuildRequestPageAsync(form));
+            return View(await BuildRequestPageAsync(form, customer.Id));
         }
         var order = new LaundryOrder
         {
@@ -489,7 +570,7 @@ public sealed class EspaceClientController(
         await transaction.CommitAsync();
     }
 
-    private async Task<CustomerOrderRequestPageViewModel> BuildRequestPageAsync(CustomerOrderRequestViewModel form)
+    private async Task<CustomerOrderRequestPageViewModel> BuildRequestPageAsync(CustomerOrderRequestViewModel form, int customerId)
     {
         var now = DateTime.UtcNow;
         var prices = await database.ServiceTariffs.AsNoTracking()
@@ -505,8 +586,21 @@ public sealed class EspaceClientController(
             Form = form,
             Categories = await database.GarmentCategories.AsNoTracking().Where(item => item.IsActive).OrderBy(item => item.Name).ToListAsync(),
             Services = await database.LaundryServices.AsNoTracking().Where(item => item.IsActive).OrderBy(item => item.Name).ToListAsync(),
-            Prices = prices, Settings = Settings
+            Prices = prices, Addresses = await ActiveAddresses(customerId), Settings = Settings
         };
+    }
+
+    private Task<List<CustomerAddress>> ActiveAddresses(int customerId) => database.CustomerAddresses.AsNoTracking()
+        .Where(item => item.CustomerId == customerId && item.IsActive)
+        .OrderByDescending(item => item.IsDefault).ThenBy(item => item.Label).ToListAsync();
+
+    private async Task<string?> ResolveAddressAsync(int? addressId, string? manualAddress, int customerId)
+    {
+        if (addressId.HasValue)
+            return await database.CustomerAddresses.AsNoTracking()
+                .Where(item => item.Id == addressId && item.CustomerId == customerId && item.IsActive)
+                .Select(item => item.Address).FirstOrDefaultAsync();
+        return CleanOptional(manualAddress);
     }
 
     private static string? CleanOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
