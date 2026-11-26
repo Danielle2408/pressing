@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
@@ -12,7 +13,8 @@ namespace Pressing.Controllers;
 public sealed class CompteController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
-    RoleManager<IdentityRole> roleManager) : Controller
+    RoleManager<IdentityRole> roleManager,
+    ApplicationDbContext database) : Controller
 {
     [AllowAnonymous]
     [HttpGet]
@@ -48,7 +50,10 @@ public sealed class CompteController(
             user, model.Password, model.RememberMe, lockoutOnFailure: true);
 
         if (result.Succeeded)
-            return LocalRedirect(model.ReturnUrl ?? Url.Action("Index", "Home")!);
+            return LocalRedirect(model.ReturnUrl ??
+                (await userManager.IsInRoleAsync(user, Roles.Customer)
+                    ? Url.Action("Index", "EspaceClient")!
+                    : Url.Action("Index", "Home")!));
 
         ModelState.AddModelError(string.Empty, result.IsLockedOut
             ? "Trop de tentatives. Réessaie dans 15 minutes."
@@ -90,6 +95,7 @@ public sealed class CompteController(
             FullName = model.FullName.Trim()
         };
 
+        await using var transaction = await database.Database.BeginTransactionAsync();
         var result = await userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
         {
@@ -99,18 +105,36 @@ public sealed class CompteController(
         }
 
         if (!await roleManager.RoleExistsAsync(Roles.Customer))
-            await roleManager.CreateAsync(new IdentityRole(Roles.Customer));
+        {
+            var roleCreation = await roleManager.CreateAsync(new IdentityRole(Roles.Customer));
+            if (!roleCreation.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError(string.Empty, "La création du compte a échoué. Réessaie plus tard.");
+                return View(model);
+            }
+        }
 
         var roleResult = await userManager.AddToRoleAsync(user, Roles.Customer);
         if (!roleResult.Succeeded)
         {
-            await userManager.DeleteAsync(user);
+            await transaction.RollbackAsync();
             ModelState.AddModelError(string.Empty, "La création du compte a échoué. Réessaie plus tard.");
             return View(model);
         }
 
+        database.Customers.Add(new Customer
+        {
+            ApplicationUserId = user.Id,
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber!,
+            NormalizedPhone = phone
+        });
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
+
         await signInManager.SignInAsync(user, isPersistent: false);
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", "EspaceClient");
     }
 
     [Authorize]

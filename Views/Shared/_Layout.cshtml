@@ -41,6 +41,12 @@
                                 <a class="nav-link text-dark" asp-controller="Commandes" asp-action="Index">Commandes</a>
                             </li>
                         }
+                        @if (User.IsInRole("Client"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="EspaceClient" asp-action="Index">Mon espace</a>
+                            </li>
+                        }
                         <li class="nav-item">
                             @if (User.Identity?.IsAuthenticated == true)
                             {

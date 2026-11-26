@@ -57,7 +57,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(item => item.PhoneNumber).HasMaxLength(32).IsRequired();
             entity.Property(item => item.NormalizedPhone).HasMaxLength(32).IsRequired();
             entity.Property(item => item.Address).HasMaxLength(400);
-            entity.HasIndex(item => item.NormalizedPhone).IsUnique();
+            entity.HasIndex(item => item.NormalizedPhone);
             entity.HasOne(item => item.ApplicationUser)
                 .WithOne()
                 .HasForeignKey<Customer>(item => item.ApplicationUserId)

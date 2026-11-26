@@ -269,8 +269,7 @@ namespace Pressing.Data.Migrations
                     b.HasIndex("ApplicationUserId")
                         .IsUnique();
 
-                    b.HasIndex("NormalizedPhone")
-                        .IsUnique();
+                    b.HasIndex("NormalizedPhone");
 
                     b.ToTable("Customers");
                 });
