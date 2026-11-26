@@ -392,6 +392,53 @@ namespace Pressing.Data.Migrations
                     b.ToTable("GarmentCategories");
                 });
 
+            modelBuilder.Entity("Pressing.Models.InventoryItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AlertThreshold")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<decimal>("QuantityOnHand")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Supplier")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("InventoryItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryItems_Quantities_NonNegative", "\"QuantityOnHand\" >= 0 AND \"AlertThreshold\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
                 {
                     b.Property<int>("Id")
@@ -747,6 +794,49 @@ namespace Pressing.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Pressing.Models.StockMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("InventoryItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("InventoryItemId", "CreatedAtUtc");
+
+                    b.ToTable("StockMovements", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockMovements_Quantity_Positive", "\"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -924,6 +1014,25 @@ namespace Pressing.Data.Migrations
                     b.Navigation("LaundryService");
                 });
 
+            modelBuilder.Entity("Pressing.Models.StockMovement", b =>
+                {
+                    b.HasOne("Pressing.Models.InventoryItem", "InventoryItem")
+                        .WithMany("Movements")
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pressing.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Pressing.Models.Customer", b =>
                 {
                     b.Navigation("Orders");
@@ -932,6 +1041,11 @@ namespace Pressing.Data.Migrations
             modelBuilder.Entity("Pressing.Models.GarmentCategory", b =>
                 {
                     b.Navigation("Tariffs");
+                });
+
+            modelBuilder.Entity("Pressing.Models.InventoryItem", b =>
+                {
+                    b.Navigation("Movements");
                 });
 
             modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>

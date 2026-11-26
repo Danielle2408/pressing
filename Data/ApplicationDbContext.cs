@@ -17,6 +17,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<OrderPayment> OrderPayments => Set<OrderPayment>();
     public DbSet<CashClosure> CashClosures => Set<CashClosure>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -167,6 +169,28 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(item => item.SpentAtUtc);
             entity.HasOne(item => item.CreatedByUser).WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint("CK_Expenses_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        builder.Entity<InventoryItem>(entity =>
+        {
+            entity.Property(item => item.Name).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.Unit).HasMaxLength(24).IsRequired();
+            entity.Property(item => item.Supplier).HasMaxLength(120);
+            entity.Property(item => item.QuantityOnHand).HasPrecision(18, 3);
+            entity.Property(item => item.AlertThreshold).HasPrecision(18, 3);
+            entity.HasIndex(item => item.Name).IsUnique();
+            entity.ToTable(table => table.HasCheckConstraint("CK_InventoryItems_Quantities_NonNegative", "\"QuantityOnHand\" >= 0 AND \"AlertThreshold\" >= 0"));
+        });
+
+        builder.Entity<StockMovement>(entity =>
+        {
+            entity.Property(item => item.Direction).HasConversion<string>().HasMaxLength(16);
+            entity.Property(item => item.Quantity).HasPrecision(18, 3);
+            entity.Property(item => item.Note).HasMaxLength(500);
+            entity.HasIndex(item => new { item.InventoryItemId, item.CreatedAtUtc });
+            entity.ToTable(table => table.HasCheckConstraint("CK_StockMovements_Quantity_Positive", "\"Quantity\" > 0"));
+            entity.HasOne(item => item.InventoryItem).WithMany(item => item.Movements).HasForeignKey(item => item.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(item => item.User).WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
