@@ -14,6 +14,10 @@ public sealed class LaundryOrder
     public bool Express { get; set; }
     public bool HomeCollection { get; set; }
     public bool HomeDelivery { get; set; }
+    public bool IsOnlineRequest { get; set; }
+    public DateTime? CollectionRequestedAtUtc { get; set; }
+    public string? CollectionAddress { get; set; }
+    public string? DeliveryAddress { get; set; }
     public decimal ExpressSurcharge { get; set; }
     public decimal CollectionFee { get; set; }
     public decimal DeliveryFee { get; set; }

@@ -319,9 +319,16 @@ namespace Pressing.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("CollectionAddress")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
                     b.Property<decimal>("CollectionFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("CollectionRequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -332,6 +339,10 @@ namespace Pressing.Data.Migrations
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DeliveryAddress")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
 
                     b.Property<decimal>("DeliveryFee")
                         .HasPrecision(18, 2)
@@ -351,6 +362,9 @@ namespace Pressing.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("HomeDelivery")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsOnlineRequest")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Notes")

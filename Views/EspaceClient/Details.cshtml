@@ -8,6 +8,18 @@
 
 <section class="py-4">
     <a asp-action="Index" class="text-decoration-none">← Retour à mes commandes</a>
+    @if (TempData["RequestSuccess"] is string requestSuccess)
+    {
+        <div class="alert alert-success mt-3" role="status">@requestSuccess</div>
+    }
+    @if (order.Status == OrderStatus.PendingConfirmation)
+    {
+        <div class="alert alert-info mt-3">Ta demande attend la confirmation du pressing. Le montant affiché est une estimation.</div>
+        <form asp-action="AnnulerDemande" method="post" class="mb-3">
+            <input type="hidden" name="id" value="@order.Id" />
+            <button type="submit" class="btn btn-outline-danger btn-sm">Annuler ma demande</button>
+        </form>
+    }
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-3 mb-4">
         <div>
             <span class="text-primary fw-semibold small text-uppercase">Suivi de commande</span>
@@ -65,6 +77,15 @@
                 <div class="card-body p-4">
                     <h2 class="h5">Retrait prévu</h2>
                     <p class="fs-5 fw-semibold mt-3 mb-0">@order.ExpectedReadyAtUtc.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")</p>
+                    @if (order.HomeCollection && order.CollectionRequestedAtUtc.HasValue)
+                    {
+                        <div class="small text-secondary mt-3">Collecte demandée le @order.CollectionRequestedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")</div>
+                        @if (!string.IsNullOrWhiteSpace(order.CollectionAddress)) { <div class="small text-secondary">@order.CollectionAddress</div> }
+                    }
+                    @if (order.HomeDelivery && !string.IsNullOrWhiteSpace(order.DeliveryAddress))
+                    {
+                        <div class="small text-secondary mt-3">Livraison à : @order.DeliveryAddress</div>
+                    }
                     @if (order.Express)
                     {
                         <span class="badge text-bg-info mt-3">Service express</span>
@@ -82,7 +103,7 @@
                     <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Payé</span><span>@order.AmountPaid.ToString("N0") FCFA</span></div>
                     <hr />
                     <div class="d-flex justify-content-between fw-semibold"><span>Solde dû</span><span>@due.ToString("N0") FCFA</span></div>
-                    @if (due > 0 && order.Status is not (OrderStatus.Cancelled or OrderStatus.Delivered))
+                    @if (due > 0 && order.Status is not (OrderStatus.PendingConfirmation or OrderStatus.Cancelled or OrderStatus.Delivered))
                     {
                         @if (pendingOnlinePayment)
                         {

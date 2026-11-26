@@ -75,6 +75,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(item => item.DeliveryFee).HasPrecision(18, 2);
             entity.Property(item => item.Notes).HasMaxLength(1000);
             entity.Property(item => item.CancellationReason).HasMaxLength(500);
+            entity.Property(item => item.CollectionAddress).HasMaxLength(400);
+            entity.Property(item => item.DeliveryAddress).HasMaxLength(400);
             entity.HasIndex(item => item.Number).IsUnique();
             entity.HasIndex(item => item.Status);
             entity.HasIndex(item => item.CustomerId);

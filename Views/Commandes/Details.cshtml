@@ -100,6 +100,19 @@
                     <hr />
                     <div class="small text-secondary">Retrait prévu</div>
                     <div class="fw-semibold">@order.ExpectedReadyAtUtc.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")</div>
+                    @if (order.IsOnlineRequest)
+                    {
+                        <div class="badge text-bg-info mt-3">Demande en ligne</div>
+                    }
+                    @if (order.HomeCollection && order.CollectionRequestedAtUtc.HasValue)
+                    {
+                        <div class="small text-secondary mt-3">Collecte demandée le @order.CollectionRequestedAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")</div>
+                        @if (!string.IsNullOrWhiteSpace(order.CollectionAddress)) { <div class="small text-secondary">@order.CollectionAddress</div> }
+                    }
+                    @if (order.HomeDelivery && !string.IsNullOrWhiteSpace(order.DeliveryAddress))
+                    {
+                        <div class="small text-secondary mt-3">Adresse de livraison : @order.DeliveryAddress</div>
+                    }
                     @if (order.Express || order.HomeCollection || order.HomeDelivery)
                     {
                         <div class="d-flex flex-wrap gap-2 mt-3">

@@ -12,3 +12,23 @@ public sealed class CustomerOrderDetailsViewModel
 {
     public LaundryOrder Order { get; init; } = null!;
 }
+
+public sealed class CustomerOrderRequestViewModel
+{
+    public List<OrderLineInputViewModel> Lines { get; set; } = [new()];
+    public bool HomeCollection { get; set; }
+    public bool HomeDelivery { get; set; }
+    public DateTime? CollectionAtLocal { get; set; }
+    public string? CollectionAddress { get; set; }
+    public string? DeliveryAddress { get; set; }
+    public string? Notes { get; set; }
+}
+
+public sealed class CustomerOrderRequestPageViewModel
+{
+    public CustomerOrderRequestViewModel Form { get; init; } = new();
+    public IReadOnlyList<GarmentCategory> Categories { get; init; } = [];
+    public IReadOnlyList<LaundryService> Services { get; init; } = [];
+    public IReadOnlyList<OrderPriceOptionViewModel> Prices { get; init; } = [];
+    public OrderSettings Settings { get; init; } = new();
+}

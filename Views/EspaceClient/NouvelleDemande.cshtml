@@ -1,0 +1,124 @@
+@model CustomerOrderRequestPageViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Nouvelle demande";
+    var pricesJson = JsonSerializer.Serialize(Model.Prices.Select(price => new { price.CategoryId, price.ServiceId, price.Price }));
+}
+
+<section class="py-4">
+    <a asp-action="Index" class="text-decoration-none">← Retour à mon espace</a>
+    <div class="mt-3 mb-4">
+        <span class="text-primary fw-semibold small text-uppercase">Réservation</span>
+        <h1 class="display-6 fw-bold mt-2">Nouvelle demande</h1>
+        <p class="text-secondary">Choisis les articles et services. Le pressing confirmera le montant à la réception.</p>
+    </div>
+    <form asp-action="NouvelleDemande" method="post" id="request-form">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Articles et services</h2>
+                <div id="request-lines">
+                @for (var i = 0; i < Model.Form.Lines.Count; i++)
+                {
+                    <div class="request-line border rounded p-3 mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label" for="Form_Lines_@(i)__CategoryId">Article</label>
+                                <select class="form-select category-select" id="Form_Lines_@(i)__CategoryId" name="Form.Lines[@i].CategoryId" required>
+                                    <option value="">Choisir</option>
+                                    @foreach (var category in Model.Categories) { <option value="@category.Id">@category.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="Form_Lines_@(i)__ServiceId">Service</label>
+                                <select class="form-select service-select" id="Form_Lines_@(i)__ServiceId" name="Form.Lines[@i].ServiceId" required>
+                                    <option value="">Choisir</option>
+                                    @foreach (var service in Model.Services) { <option value="@service.Id">@service.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label" for="Form_Lines_@(i)__Quantity">Quantité</label>
+                                <input class="form-control quantity-input" id="Form_Lines_@(i)__Quantity" name="Form.Lines[@i].Quantity" type="number" min="1" max="100" value="@Model.Form.Lines[i].Quantity" required />
+                            </div>
+                            <div class="col-md-2"><button type="button" class="btn btn-outline-danger remove-line w-100">Retirer</button></div>
+                            <div class="col-md-4"><label class="form-label" for="Form_Lines_@(i)__Color">Couleur (facultatif)</label><input class="form-control" id="Form_Lines_@(i)__Color" name="Form.Lines[@i].Color" maxlength="60" /></div>
+                            <div class="col-md-4"><label class="form-label" for="Form_Lines_@(i)__Brand">Marque (facultatif)</label><input class="form-control" id="Form_Lines_@(i)__Brand" name="Form.Lines[@i].Brand" maxlength="80" /></div>
+                            <div class="col-md-4"><div class="small text-secondary">Estimation : <strong class="line-estimate">0 FCFA</strong></div></div>
+                        </div>
+                    </div>
+                }
+                </div>
+                <button type="button" id="add-line" class="btn btn-outline-primary">Ajouter un article</button>
+                <div class="text-end fw-semibold fs-5 mt-3">Estimation des articles : <span id="estimate-total">0 FCFA</span></div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Collecte et livraison</h2>
+                <div class="form-check mb-3"><input asp-for="Form.HomeCollection" class="form-check-input" /><label asp-for="Form.HomeCollection" class="form-check-label">Je souhaite une collecte à domicile (+@Model.Settings.HomeCollectionFee.ToString("N0") FCFA)</label></div>
+                <div id="collection-fields" class="row g-3 mb-3 d-none">
+                    <div class="col-md-6"><label asp-for="Form.CollectionAtLocal" class="form-label">Date et heure souhaitées</label><input asp-for="Form.CollectionAtLocal" class="form-control" type="datetime-local" /></div>
+                    <div class="col-md-6"><label asp-for="Form.CollectionAddress" class="form-label">Adresse de collecte</label><input asp-for="Form.CollectionAddress" class="form-control" maxlength="400" /></div>
+                </div>
+                <div class="form-check"><input asp-for="Form.HomeDelivery" class="form-check-input" /><label asp-for="Form.HomeDelivery" class="form-check-label">Je souhaite une livraison à domicile (+@Model.Settings.HomeDeliveryFee.ToString("N0") FCFA)</label></div>
+                <div id="delivery-fields" class="mt-3 d-none"><label asp-for="Form.DeliveryAddress" class="form-label">Adresse de livraison</label><input asp-for="Form.DeliveryAddress" class="form-control" maxlength="400" /></div>
+                <div class="mt-3"><label asp-for="Form.Notes" class="form-label">Remarque (facultatif)</label><textarea asp-for="Form.Notes" class="form-control" rows="3" maxlength="1000"></textarea></div>
+                <p class="small text-secondary mt-3 mb-0">Estimation hors frais éventuels. Le tarif final sera confirmé par le pressing. Aucun paiement ne sera demandé avant cette confirmation.</p>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Transmettre ma demande</button>
+    </form>
+</section>
+
+@section Scripts {
+<script>
+(() => {
+    const prices = @Html.Raw(pricesJson);
+    const lines = document.getElementById('request-lines');
+    const total = document.getElementById('estimate-total');
+    const collection = document.getElementById('Form_HomeCollection');
+    const collectionFields = document.getElementById('collection-fields');
+    const delivery = document.getElementById('Form_HomeDelivery');
+    const deliveryFields = document.getElementById('delivery-fields');
+    const money = value => new Intl.NumberFormat('fr-FR').format(value) + ' FCFA';
+    const refresh = () => {
+        let sum = 0;
+        lines.querySelectorAll('.request-line').forEach(row => {
+            const category = Number(row.querySelector('.category-select').value);
+            const service = Number(row.querySelector('.service-select').value);
+            const quantity = Number(row.querySelector('.quantity-input').value) || 0;
+            const rate = prices.find(item => item.categoryId === category && item.serviceId === service);
+            const amount = rate ? rate.price * quantity : 0;
+            sum += amount;
+            row.querySelector('.line-estimate').textContent = money(amount);
+        });
+        total.textContent = money(sum);
+        collectionFields.classList.toggle('d-none', !collection.checked);
+        deliveryFields.classList.toggle('d-none', !delivery.checked);
+    };
+    const renumber = () => lines.querySelectorAll('.request-line').forEach((row, i) => {
+        row.querySelectorAll('[name]').forEach(input => input.name = input.name.replace(/Form\.Lines\[\d+\]/, `Form.Lines[${i}]`));
+        row.querySelectorAll('[id]').forEach(input => input.id = input.id.replace(/Form_Lines_\d+__/, `Form_Lines_${i}__`));
+        row.querySelectorAll('label[for]').forEach(label => label.htmlFor = label.htmlFor.replace(/Form_Lines_\d+__/, `Form_Lines_${i}__`));
+    });
+    document.getElementById('add-line').addEventListener('click', () => {
+        const clone = lines.querySelector('.request-line').cloneNode(true);
+        clone.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+        clone.querySelectorAll('input').forEach(input => { if (input.type === 'number') input.value = 1; else input.value = ''; });
+        lines.appendChild(clone);
+        renumber(); refresh();
+    });
+    lines.addEventListener('click', event => {
+        if (event.target.closest('.remove-line') && lines.querySelectorAll('.request-line').length > 1) {
+            event.target.closest('.request-line').remove(); renumber(); refresh();
+        }
+    });
+    lines.addEventListener('change', refresh);
+    lines.addEventListener('input', refresh);
+    collection.addEventListener('change', refresh);
+    delivery.addEventListener('change', refresh);
+    refresh();
+})();
+</script>
+}

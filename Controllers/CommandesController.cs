@@ -350,6 +350,7 @@ public sealed class CommandesController(
 
     private static IReadOnlyList<OrderStatus> GetAllowedStatuses(OrderStatus current) => current switch
     {
+        OrderStatus.PendingConfirmation => [OrderStatus.Received, OrderStatus.Cancelled],
         OrderStatus.Received => [OrderStatus.Washing, OrderStatus.DryCleaning, OrderStatus.Cancelled],
         OrderStatus.Washing or OrderStatus.DryCleaning => [OrderStatus.Ironing, OrderStatus.Ready, OrderStatus.Cancelled],
         OrderStatus.Ironing => [OrderStatus.Ready, OrderStatus.Cancelled],
