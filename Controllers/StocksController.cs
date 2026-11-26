@@ -19,7 +19,8 @@ public sealed class StocksController(ApplicationDbContext database, AuditLogServ
     {
         var model = new StockViewModel
         {
-            Items = await database.InventoryItems.AsNoTracking().OrderBy(item => item.Name).ToListAsync(),
+            Items = await database.InventoryItems.AsNoTracking().Include(item => item.SupplierRecord).OrderBy(item => item.Name).ToListAsync(),
+            Suppliers = await database.Suppliers.AsNoTracking().OrderBy(item => item.Name).ToListAsync(),
             Movements = await database.StockMovements.AsNoTracking().Include(item => item.InventoryItem)
                 .Include(item => item.User).OrderByDescending(item => item.CreatedAtUtc).Take(100).ToListAsync()
         };
@@ -37,6 +38,11 @@ public sealed class StocksController(ApplicationDbContext database, AuditLogServ
             ModelState.AddModelError(string.Empty, "Les quantités ne peuvent pas dépasser trois décimales.");
         if (await database.InventoryItems.AnyAsync(item => item.Name.ToLower() == name.ToLower()))
             ModelState.AddModelError(nameof(model.Name), "Un produit portant ce nom existe déjà.");
+        var supplier = model.SupplierId.HasValue
+            ? await database.Suppliers.FirstOrDefaultAsync(item => item.Id == model.SupplierId && item.IsActive)
+            : null;
+        if (model.SupplierId.HasValue && supplier is null)
+            ModelState.AddModelError(nameof(model.SupplierId), "Choisis un fournisseur actif.");
         if (!ModelState.IsValid)
         {
             TempData["StockError"] = "Vérifie les informations du produit et réessaie.";
@@ -48,7 +54,7 @@ public sealed class StocksController(ApplicationDbContext database, AuditLogServ
         var item = new InventoryItem
         {
             Name = name, Unit = model.Unit.Trim(), QuantityOnHand = model.InitialQuantity,
-            AlertThreshold = model.AlertThreshold, Supplier = CleanOptional(model.Supplier), UpdatedAtUtc = DateTime.UtcNow
+            AlertThreshold = model.AlertThreshold, SupplierId = supplier?.Id, Supplier = supplier?.Name, UpdatedAtUtc = DateTime.UtcNow
         };
         database.InventoryItems.Add(item);
         await database.SaveChangesAsync();
@@ -65,6 +71,50 @@ public sealed class StocksController(ApplicationDbContext database, AuditLogServ
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
         TempData["StockSuccess"] = "Le produit a été ajouté à l’inventaire.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AjouterFournisseur(CreateSupplierViewModel model)
+    {
+        if (!User.IsInRole(Roles.Administrator)) return Forbid();
+        var name = model.Name.Trim();
+        if (await database.Suppliers.AnyAsync(item => item.Name.ToLower() == name.ToLower()))
+            ModelState.AddModelError(nameof(model.Name), "Un fournisseur portant ce nom existe déjà.");
+        if (!ModelState.IsValid)
+        {
+            TempData["StockError"] = "Vérifie les informations du fournisseur et réessaie.";
+            return RedirectToAction(nameof(Index));
+        }
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+        var supplier = new Supplier
+        {
+            Name = name, ContactName = CleanOptional(model.ContactName), PhoneNumber = CleanOptional(model.PhoneNumber),
+            Email = CleanOptional(model.Email), Address = CleanOptional(model.Address), CreatedAtUtc = DateTime.UtcNow
+        };
+        database.Suppliers.Add(supplier);
+        await database.SaveChangesAsync();
+        auditLog.Record(userId, "Création", "Fournisseur", supplier.Id, supplier.Name);
+        await database.SaveChangesAsync();
+        TempData["StockSuccess"] = "Le fournisseur a été ajouté.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BasculerFournisseur(int id)
+    {
+        if (!User.IsInRole(Roles.Administrator)) return Forbid();
+        var supplier = await database.Suppliers.FindAsync(id);
+        if (supplier is null) return NotFound();
+        supplier.IsActive = !supplier.IsActive;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+        auditLog.Record(userId, supplier.IsActive ? "Réactivation" : "Désactivation", "Fournisseur", supplier.Id, supplier.Name);
+        await database.SaveChangesAsync();
+        TempData["StockSuccess"] = supplier.IsActive ? "Fournisseur réactivé." : "Fournisseur désactivé.";
         return RedirectToAction(nameof(Index));
     }
 

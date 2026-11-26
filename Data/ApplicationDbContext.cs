@@ -25,6 +25,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Promotion> Promotions => Set<Promotion>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -267,5 +268,18 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(item => item.Customer).WithMany(customer => customer.Addresses)
                 .HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<Supplier>(entity =>
+        {
+            entity.Property(item => item.Name).HasMaxLength(120).IsRequired();
+            entity.Property(item => item.ContactName).HasMaxLength(120);
+            entity.Property(item => item.PhoneNumber).HasMaxLength(32);
+            entity.Property(item => item.Email).HasMaxLength(254);
+            entity.Property(item => item.Address).HasMaxLength(400);
+            entity.HasIndex(item => item.Name).IsUnique();
+        });
+
+        builder.Entity<InventoryItem>().HasOne(item => item.SupplierRecord).WithMany(supplier => supplier.InventoryItems)
+            .HasForeignKey(item => item.SupplierId).OnDelete(DeleteBehavior.SetNull);
     }
 }

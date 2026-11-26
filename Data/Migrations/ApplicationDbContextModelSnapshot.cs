@@ -560,6 +560,9 @@ namespace Pressing.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -572,6 +575,8 @@ namespace Pressing.Data.Migrations
 
                     b.HasIndex("Name")
                         .IsUnique();
+
+                    b.HasIndex("SupplierId");
 
                     b.ToTable("InventoryItems", t =>
                         {
@@ -1091,6 +1096,49 @@ namespace Pressing.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Pressing.Models.Supplier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Suppliers");
+                });
+
             modelBuilder.Entity("Pressing.Models.UserNotification", b =>
                 {
                     b.Property<int>("Id")
@@ -1270,6 +1318,16 @@ namespace Pressing.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("Pressing.Models.InventoryItem", b =>
+                {
+                    b.HasOne("Pressing.Models.Supplier", "SupplierRecord")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("SupplierRecord");
                 });
 
             modelBuilder.Entity("Pressing.Models.LaundryOrder", b =>
@@ -1471,6 +1529,11 @@ namespace Pressing.Data.Migrations
             modelBuilder.Entity("Pressing.Models.LaundryService", b =>
                 {
                     b.Navigation("Tariffs");
+                });
+
+            modelBuilder.Entity("Pressing.Models.Supplier", b =>
+                {
+                    b.Navigation("InventoryItems");
                 });
 #pragma warning restore 612, 618
         }

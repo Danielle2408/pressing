@@ -19,9 +19,24 @@
                 <div class="col-md-2"><label class="form-label" for="item-unit">Unité (kg, litre, pièce…)</label><input class="form-control" id="item-unit" name="Unit" maxlength="24" required /></div>
                 <div class="col-md-2"><label class="form-label" for="item-initial">Stock initial</label><input class="form-control" id="item-initial" name="InitialQuantity" type="number" min="0" step="0.001" value="0" required /></div>
                 <div class="col-md-2"><label class="form-label" for="item-threshold">Seuil d’alerte</label><input class="form-control" id="item-threshold" name="AlertThreshold" type="number" min="0" step="0.001" value="0" required /></div>
-                <div class="col-md-3"><label class="form-label" for="item-supplier">Fournisseur</label><input class="form-control" id="item-supplier" name="Supplier" maxlength="120" /></div>
+                <div class="col-md-3"><label class="form-label" for="item-supplier">Fournisseur</label><select class="form-select" id="item-supplier" name="SupplierId"><option value="">Aucun fournisseur</option>@foreach (var supplier in Model.Suppliers.Where(item => item.IsActive)) { <option value="@supplier.Id">@supplier.Name</option> }</select></div>
                 <div class="col-12"><button class="btn btn-primary" type="submit">Ajouter à l’inventaire</button></div>
             </form>
+        </div></div>
+    }
+
+    @if (User.IsInRole(Roles.Administrator))
+    {
+        <div class="card border-0 shadow-sm mb-4"><div class="card-body p-4"><h2 class="h5">Répertoire des fournisseurs</h2>
+            <form asp-action="AjouterFournisseur" method="post" class="row g-3 mt-1">
+                <div class="col-md-3"><label class="form-label" for="supplier-name">Nom</label><input class="form-control" id="supplier-name" name="Name" maxlength="120" required /></div>
+                <div class="col-md-2"><label class="form-label" for="supplier-contact">Contact</label><input class="form-control" id="supplier-contact" name="ContactName" maxlength="120" /></div>
+                <div class="col-md-2"><label class="form-label" for="supplier-phone">Téléphone</label><input class="form-control" id="supplier-phone" name="PhoneNumber" maxlength="32" /></div>
+                <div class="col-md-2"><label class="form-label" for="supplier-email">E-mail</label><input class="form-control" id="supplier-email" name="Email" type="email" maxlength="254" /></div>
+                <div class="col-md-3"><label class="form-label" for="supplier-address">Adresse</label><input class="form-control" id="supplier-address" name="Address" maxlength="400" /></div>
+                <div class="col-12"><button class="btn btn-outline-primary" type="submit">Ajouter un fournisseur</button></div>
+            </form>
+            @if (Model.Suppliers.Count > 0) { <div class="d-flex flex-wrap gap-2 mt-3">@foreach (var supplier in Model.Suppliers) { <span class="badge @(supplier.IsActive ? "text-bg-light" : "text-bg-secondary") border p-2">@supplier.Name @if (!string.IsNullOrWhiteSpace(supplier.PhoneNumber)) { <span>· @supplier.PhoneNumber</span> } <form asp-action="BasculerFournisseur" method="post" class="d-inline ms-1"><input type="hidden" name="id" value="@supplier.Id" /><button type="submit" class="btn btn-sm btn-link p-0">@(supplier.IsActive ? "Désactiver" : "Réactiver")</button></form></span> }</div> }
         </div></div>
     }
 
@@ -32,7 +47,7 @@
         @foreach (var item in Model.Items)
         {
             var low = item.IsActive && item.QuantityOnHand <= item.AlertThreshold;
-            <tr class="@(low ? "table-warning" : "")"><td class="fw-semibold">@item.Name <span class="small text-secondary">(@item.Unit)</span></td><td>@(item.Supplier ?? "—")</td><td>@item.QuantityOnHand.ToString("N3") @item.Unit</td><td>@item.AlertThreshold.ToString("N3") @item.Unit</td><td>@if (!item.IsActive) { <span class="badge text-bg-secondary">Désactivé</span> } else if (low) { <span class="badge text-bg-warning">Stock bas</span> } else { <span class="badge text-bg-success">Disponible</span> }</td>
+            <tr class="@(low ? "table-warning" : "")"><td class="fw-semibold">@item.Name <span class="small text-secondary">(@item.Unit)</span></td><td>@(item.SupplierRecord?.Name ?? item.Supplier ?? "—")</td><td>@item.QuantityOnHand.ToString("N3") @item.Unit</td><td>@item.AlertThreshold.ToString("N3") @item.Unit</td><td>@if (!item.IsActive) { <span class="badge text-bg-secondary">Désactivé</span> } else if (low) { <span class="badge text-bg-warning">Stock bas</span> } else { <span class="badge text-bg-success">Disponible</span> }</td>
             @if (User.IsInRole(Roles.Administrator))
             {
                 <td class="text-end"><form asp-action="BasculerActivation" method="post"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-secondary" type="submit">@(item.IsActive ? "Désactiver" : "Réactiver")</button></form></td>

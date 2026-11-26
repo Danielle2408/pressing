@@ -7,8 +7,10 @@ public sealed class StockViewModel
 {
     public IReadOnlyList<InventoryItem> Items { get; init; } = [];
     public IReadOnlyList<StockMovement> Movements { get; init; } = [];
+    public IReadOnlyList<Supplier> Suppliers { get; init; } = [];
     public CreateInventoryItemViewModel NewItem { get; init; } = new();
     public RecordStockMovementViewModel NewMovement { get; init; } = new();
+    public CreateSupplierViewModel NewSupplier { get; init; } = new();
 }
 
 public sealed class CreateInventoryItemViewModel
@@ -25,9 +27,22 @@ public sealed class CreateInventoryItemViewModel
     [Range(typeof(decimal), "0", "100000000")]
     [Display(Name = "Seuil d’alerte")]
     public decimal AlertThreshold { get; set; }
-    [StringLength(120)]
     [Display(Name = "Fournisseur (facultatif)")]
-    public string? Supplier { get; set; }
+    public int? SupplierId { get; set; }
+}
+
+public sealed class CreateSupplierViewModel
+{
+    [Required, StringLength(120, MinimumLength = 2)]
+    public string Name { get; set; } = string.Empty;
+    [StringLength(120)]
+    public string? ContactName { get; set; }
+    [StringLength(32)]
+    public string? PhoneNumber { get; set; }
+    [EmailAddress, StringLength(254)]
+    public string? Email { get; set; }
+    [StringLength(400)]
+    public string? Address { get; set; }
 }
 
 public sealed class RecordStockMovementViewModel
