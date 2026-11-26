@@ -8,6 +8,7 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
@@ -192,6 +193,18 @@ public sealed class CommandesController(
             .Where(status => status != OrderStatus.Cancelled || User.IsInRole(Roles.Administrator))
             .ToList();
         return View(new OrderDetailsViewModel { Order = order, AllowedStatuses = allowedStatuses });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Recu(int paymentId)
+    {
+        var payment = await database.OrderPayments.AsNoTracking()
+            .Include(item => item.LaundryOrder).ThenInclude(order => order.Customer)
+            .Include(item => item.LaundryOrder).ThenInclude(order => order.Lines)
+            .FirstOrDefaultAsync(item => item.Id == paymentId && item.Status == OrderPaymentStatus.Confirmed && item.ReceiptNumber != null);
+        if (payment is null) return NotFound();
+        var fileName = ReceiptPdfGenerator.InvalidFileNameCharacters().Replace(payment.ReceiptNumber!, "_") + ".pdf";
+        return File(ReceiptPdfGenerator.Generate(payment), "application/pdf", fileName);
     }
 
     [HttpPost]

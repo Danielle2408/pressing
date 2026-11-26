@@ -8,6 +8,7 @@ using Pressing.ViewModels;
 using Pressing.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Identity;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
@@ -191,6 +192,21 @@ public sealed class EspaceClientController(
         {
             Order = order, Claims = order.Claims.OrderByDescending(claim => claim.CreatedAtUtc).ToList()
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Recu(int paymentId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var payment = await database.OrderPayments.AsNoTracking()
+            .Include(item => item.LaundryOrder).ThenInclude(order => order.Customer)
+            .Include(item => item.LaundryOrder).ThenInclude(order => order.Lines)
+            .Where(item => item.Id == paymentId && item.Status == OrderPaymentStatus.Confirmed &&
+                           item.ReceiptNumber != null && item.LaundryOrder.Customer.ApplicationUserId == userId)
+            .FirstOrDefaultAsync();
+        if (payment is null) return NotFound();
+        var fileName = ReceiptPdfGenerator.InvalidFileNameCharacters().Replace(payment.ReceiptNumber!, "_") + ".pdf";
+        return File(ReceiptPdfGenerator.Generate(payment), "application/pdf", fileName);
     }
 
     [HttpPost]

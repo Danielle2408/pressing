@@ -144,7 +144,19 @@
                     }
                     @if (order.Payments.Count > 0)
                     {
-                        <div class="small text-secondary mt-3">@order.Payments.Count paiement(s) enregistré(s).</div>
+                        <div class="small text-secondary mt-3">Historique des paiements</div>
+                        @foreach (var payment in order.Payments.OrderByDescending(item => item.CreatedAtUtc))
+                        {
+                            <div class="d-flex flex-wrap justify-content-between gap-2 border-bottom py-2">
+                                <span>@payment.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy") · @payment.Method.ToFrench() · @payment.Status</span>
+                                <span class="text-end">@payment.Amount.ToString("N0") FCFA
+                                    @if (payment.Status == OrderPaymentStatus.Confirmed && payment.ReceiptNumber is not null)
+                                    {
+                                        <a asp-action="Recu" asp-route-paymentId="@payment.Id" class="d-block small">Télécharger le reçu PDF</a>
+                                    }
+                                </span>
+                            </div>
+                        }
                     }
                     <p class="small text-secondary mt-3 mb-0">Les reçus sont disponibles auprès du pressing.</p>
                 </div>

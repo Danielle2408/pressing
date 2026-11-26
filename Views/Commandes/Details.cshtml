@@ -168,6 +168,10 @@
                                 {
                                     <tr>
                                         <td>@payment.ReceiptNumber
+                                            @if (payment.Status == OrderPaymentStatus.Confirmed && payment.ReceiptNumber is not null)
+                                            {
+                                                <div><a asp-action="Recu" asp-route-paymentId="@payment.Id" class="small">Télécharger le reçu PDF</a></div>
+                                            }
                                             @if (!string.IsNullOrWhiteSpace(payment.TransactionReference))
                                             {
                                                 <div class="small text-secondary">Réf. @payment.TransactionReference</div>
