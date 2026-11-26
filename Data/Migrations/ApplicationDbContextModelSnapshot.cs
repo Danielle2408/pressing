@@ -357,6 +357,9 @@ namespace Pressing.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<bool>("ReceiveStatusEmails")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId")

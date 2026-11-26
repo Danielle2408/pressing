@@ -59,7 +59,8 @@ public sealed class EspaceClientController(
         return View(new CustomerProfileViewModel
         {
             FullName = customer.FullName, Address = customer.Address,
-            Email = user.Email ?? string.Empty, PhoneNumber = customer.PhoneNumber
+            Email = user.Email ?? string.Empty, PhoneNumber = customer.PhoneNumber,
+            ReceiveStatusEmails = customer.ReceiveStatusEmails
         });
     }
 
@@ -74,6 +75,7 @@ public sealed class EspaceClientController(
         if (customer is null || user is null) return NotFound();
         customer.FullName = model.FullName.Trim();
         customer.Address = string.IsNullOrWhiteSpace(model.Address) ? null : model.Address.Trim();
+        customer.ReceiveStatusEmails = model.ReceiveStatusEmails;
         user.FullName = customer.FullName;
         var result = await users.UpdateAsync(user);
         if (!result.Succeeded)
@@ -81,6 +83,7 @@ public sealed class EspaceClientController(
             foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
             model.Email = user.Email ?? string.Empty;
             model.PhoneNumber = customer.PhoneNumber;
+            model.ReceiveStatusEmails = customer.ReceiveStatusEmails;
             return View(model);
         }
         await database.SaveChangesAsync();

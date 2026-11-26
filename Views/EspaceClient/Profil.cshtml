@@ -16,6 +16,7 @@
                 <div class="mb-3"><label class="form-label" for="profile-email">Adresse e-mail</label><input id="profile-email" class="form-control" value="@Model.Email" readonly /><div class="form-text">Contacte le pressing si tu dois changer d’adresse e-mail.</div></div>
                 <div class="mb-3"><label class="form-label" for="profile-phone">Téléphone</label><input id="profile-phone" class="form-control" value="@Model.PhoneNumber" readonly /><div class="form-text">Le téléphone est utilisé pour la connexion. Il ne peut pas être changé sans vérification.</div></div>
                 <div class="mb-3"><label asp-for="Address" class="form-label"></label><textarea asp-for="Address" class="form-control" rows="3" maxlength="400"></textarea><span asp-validation-for="Address" class="text-danger"></span></div>
+                <div class="form-check mb-3"><input asp-for="ReceiveStatusEmails" class="form-check-input" /><label asp-for="ReceiveStatusEmails" class="form-check-label">Recevoir les mises à jour de commande par e-mail</label><div class="form-text">Les alertes de statut restent également disponibles dans tes notifications.</div></div>
                 <button type="submit" class="btn btn-primary">Enregistrer le profil</button>
             </form>
         </div></div></div>

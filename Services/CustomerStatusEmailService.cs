@@ -13,7 +13,7 @@ public sealed class CustomerStatusEmailService(
     public async Task SendAsync(LaundryOrder order, string customerName, OrderStatus status)
     {
         var recipient = await database.Customers.AsNoTracking()
-            .Where(customer => customer.Id == order.CustomerId && customer.ApplicationUser != null &&
+            .Where(customer => customer.Id == order.CustomerId && customer.ReceiveStatusEmails && customer.ApplicationUser != null &&
                                customer.ApplicationUser.EmailConfirmed)
             .Select(customer => customer.ApplicationUser!.Email)
             .FirstOrDefaultAsync();
