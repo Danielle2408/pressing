@@ -14,7 +14,7 @@ namespace Pressing.Controllers;
 
 [Authorize(Policy = Roles.Administrator)]
 [Route("Administration/Finances/[action]")]
-public sealed class FinancesController(ApplicationDbContext database) : Controller
+public sealed class FinancesController(ApplicationDbContext database, AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(DateOnly? from, DateOnly? to)
@@ -117,11 +117,14 @@ public sealed class FinancesController(ApplicationDbContext database) : Controll
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Challenge();
         var localDate = DateTime.SpecifyKind(model.SpentOn.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)), DateTimeKind.Unspecified);
-        database.Expenses.Add(new Expense
+        var expense = new Expense
         {
             Label = model.Label.Trim(), Category = model.Category.Trim(), Amount = decimal.Round(model.Amount, 2),
             SpentAtUtc = TimeZoneInfo.ConvertTimeToUtc(localDate, TimeZoneInfo.Local), CreatedByUserId = userId
-        });
+        };
+        database.Expenses.Add(expense);
+        await database.SaveChangesAsync();
+        auditLog.Record(userId, "Création", "Dépense", expense.Id, $"{model.Label.Trim()} : {model.Amount:N0} FCFA.");
         await database.SaveChangesAsync();
         TempData["FinanceSuccess"] = "La dépense a été enregistrée.";
         return RedirectToAction(nameof(Index), new { from = model.SpentOn, to = model.SpentOn });

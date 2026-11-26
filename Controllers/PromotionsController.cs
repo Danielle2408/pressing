@@ -6,12 +6,13 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
 [Authorize(Policy = Roles.Administrator)]
 [Route("Administration/Promotions/[action]")]
-public sealed class PromotionsController(ApplicationDbContext database) : Controller
+public sealed class PromotionsController(ApplicationDbContext database, AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index() => View(new PromotionListViewModel
@@ -42,7 +43,7 @@ public sealed class PromotionsController(ApplicationDbContext database) : Contro
         }
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId)) return Challenge();
-        database.Promotions.Add(new Promotion
+        var promotion = new Promotion
         {
             Code = normalized, NormalizedCode = normalized,
             Description = model.Description.Trim(), Kind = model.Kind, Value = decimal.Round(model.Value, 2),
@@ -50,7 +51,10 @@ public sealed class PromotionsController(ApplicationDbContext database) : Contro
             StartsAtUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(model.StartsAtLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local),
             EndsAtUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(model.EndsAtLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local),
             CreatedByUserId = userId
-        });
+        };
+        database.Promotions.Add(promotion);
+        await database.SaveChangesAsync();
+        auditLog.Record(userId, "Création", "Promotion", promotion.Id, $"Code {promotion.Code} créé.");
         await database.SaveChangesAsync();
         TempData["PromotionSuccess"] = "La promotion a été créée.";
         return RedirectToAction(nameof(Index));
@@ -63,6 +67,9 @@ public sealed class PromotionsController(ApplicationDbContext database) : Contro
         var promotion = await database.Promotions.FindAsync(id);
         if (promotion is null) return NotFound();
         promotion.IsActive = !promotion.IsActive;
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+        auditLog.Record(userId, promotion.IsActive ? "Réactivation" : "Désactivation", "Promotion", promotion.Id, promotion.Code);
         await database.SaveChangesAsync();
         TempData["PromotionSuccess"] = promotion.IsActive ? "Code réactivé." : "Code désactivé.";
         return RedirectToAction(nameof(Index));

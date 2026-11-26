@@ -23,6 +23,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<LoyaltyLedgerEntry> LoyaltyLedgerEntries => Set<LoyaltyLedgerEntry>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -243,6 +244,17 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(item => item.GarmentCategory).WithMany().HasForeignKey(item => item.GarmentCategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(item => item.CreatedByUser).WithMany().HasForeignKey(item => item.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.ToTable(table => table.HasCheckConstraint("CK_Promotions_Value_Positive", "\"Value\" > 0"));
+        });
+
+        builder.Entity<AuditLog>(entity =>
+        {
+            entity.Property(item => item.Action).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.Entity).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.EntityId).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.Details).HasMaxLength(500);
+            entity.HasIndex(item => item.CreatedAtUtc);
+            entity.HasIndex(item => new { item.Entity, item.EntityId });
+            entity.HasOne(item => item.User).WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

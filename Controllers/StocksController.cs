@@ -6,12 +6,13 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
 [Authorize(Roles = Roles.Administrator + "," + Roles.Operator)]
 [Route("Comptoir/Stocks/[action]")]
-public sealed class StocksController(ApplicationDbContext database) : Controller
+public sealed class StocksController(ApplicationDbContext database, AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -60,6 +61,8 @@ public sealed class StocksController(ApplicationDbContext database) : Controller
             });
             await database.SaveChangesAsync();
         }
+        auditLog.Record(userId, "Création", "Stock", item.Id, $"Produit {item.Name}, quantité initiale {item.QuantityOnHand:N3} {item.Unit}.");
+        await database.SaveChangesAsync();
         await transaction.CommitAsync();
         TempData["StockSuccess"] = "Le produit a été ajouté à l’inventaire.";
         return RedirectToAction(nameof(Index));
@@ -101,6 +104,8 @@ public sealed class StocksController(ApplicationDbContext database) : Controller
             InventoryItemId = item.Id, Direction = model.Direction,
             Quantity = decimal.Round(model.Quantity, 3), Note = CleanOptional(model.Note), UserId = userId
         });
+        auditLog.Record(userId, model.Direction == StockMovementDirection.Incoming ? "Entrée de stock" : "Sortie de stock",
+            "Stock", item.Id, $"{model.Quantity:N3} {item.Unit} pour {item.Name}.");
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
         TempData["StockSuccess"] = "Le mouvement de stock a été enregistré.";
@@ -116,6 +121,9 @@ public sealed class StocksController(ApplicationDbContext database) : Controller
         if (item is null) return NotFound();
         item.IsActive = !item.IsActive;
         item.UpdatedAtUtc = DateTime.UtcNow;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+        auditLog.Record(userId, item.IsActive ? "Désactivation" : "Réactivation", "Stock", item.Id, item.Name);
         await database.SaveChangesAsync();
         TempData["StockSuccess"] = item.IsActive ? "Produit réactivé." : "Produit désactivé.";
         return RedirectToAction(nameof(Index));

@@ -8,6 +8,7 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
@@ -15,7 +16,8 @@ namespace Pressing.Controllers;
 [Route("Administration/Utilisateurs/[action]")]
 public sealed class AdministrationUtilisateursController(
     UserManager<ApplicationUser> users,
-    ApplicationDbContext database) : Controller
+    ApplicationDbContext database,
+    AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(string? role)
@@ -80,6 +82,9 @@ public sealed class AdministrationUtilisateursController(
         }
         await users.UpdateSecurityStampAsync(user);
         await database.SaveChangesAsync();
+        auditLog.Record(User.FindFirstValue(ClaimTypes.NameIdentifier)!, "Modification", "Utilisateur", user.Id,
+            "Nom, e-mail ou téléphone modifié.");
+        await database.SaveChangesAsync();
         TempData["UsersSuccess"] = $"Le compte de {user.FullName} a été modifié.";
         return RedirectToAction(nameof(Index));
     }
@@ -117,6 +122,9 @@ public sealed class AdministrationUtilisateursController(
             foreach (var error in assigned.Errors) ModelState.AddModelError(string.Empty, error.Description);
             return View(model);
         }
+        auditLog.Record(User.FindFirstValue(ClaimTypes.NameIdentifier)!, "Création", "Utilisateur", user.Id,
+            $"Compte créé avec le rôle {model.Role}.");
+        await database.SaveChangesAsync();
         await transaction.CommitAsync();
         TempData["UsersSuccess"] = $"Le compte de {user.FullName} a été créé. Transmets-lui son mot de passe temporaire de manière sécurisée.";
         return RedirectToAction(nameof(Index));
@@ -145,7 +153,12 @@ public sealed class AdministrationUtilisateursController(
         }
         user.IsActive = !user.IsActive;
         var result = await users.UpdateAsync(user);
-        if (result.Succeeded) await users.UpdateSecurityStampAsync(user);
+        if (result.Succeeded)
+        {
+            await users.UpdateSecurityStampAsync(user);
+            auditLog.Record(User.FindFirstValue(ClaimTypes.NameIdentifier)!, user.IsActive ? "Réactivation" : "Désactivation", "Utilisateur", user.Id);
+            await database.SaveChangesAsync();
+        }
         if (!result.Succeeded)
             TempData["UsersError"] = "Le changement d’état du compte n’a pas pu être enregistré.";
         else
@@ -178,6 +191,8 @@ public sealed class AdministrationUtilisateursController(
             model.FullName = user.FullName;
             return View(model);
         }
+        auditLog.Record(User.FindFirstValue(ClaimTypes.NameIdentifier)!, "Réinitialisation du mot de passe", "Utilisateur", user.Id);
+        await database.SaveChangesAsync();
         TempData["UsersSuccess"] = $"Le mot de passe de {user.FullName} a été réinitialisé. Transmets-le-lui de manière sécurisée.";
         return RedirectToAction(nameof(Index));
     }

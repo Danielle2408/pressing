@@ -6,12 +6,13 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
 [Authorize(Roles = Roles.Administrator + "," + Roles.Operator)]
 [Route("Comptoir/Caisse/[action]")]
-public sealed class CaisseController(ApplicationDbContext database) : Controller
+public sealed class CaisseController(ApplicationDbContext database, AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -72,6 +73,9 @@ public sealed class CaisseController(ApplicationDbContext database) : Controller
         database.CashClosures.Add(closure);
         try
         {
+            await database.SaveChangesAsync();
+            auditLog.Record(userId, "Clôture", "Caisse", closure.Id,
+                $"Espèces attendues {closure.ExpectedCash:N0} FCFA, comptées {closure.CountedCash:N0} FCFA, écart {closure.Variance:N0} FCFA.");
             await database.SaveChangesAsync();
             TempData["CashSuccess"] = $"Caisse clôturée. Écart constaté : {closure.Variance:N0} FCFA.";
         }

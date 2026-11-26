@@ -21,7 +21,8 @@ public sealed class EspaceClientController(
     UserManager<ApplicationUser> users,
     SignInManager<ApplicationUser> signInManager,
     LoyaltyRewardService loyaltyRewards,
-    PromotionPricingService promotionPricing) : Controller
+    PromotionPricingService promotionPricing,
+    AuditLogService auditLog) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
     [HttpGet]
@@ -216,6 +217,7 @@ public sealed class EspaceClientController(
         await database.SaveChangesAsync();
         order.Number = $"PR-{now.Year}-{order.Id:D6}";
         await database.SaveChangesAsync();
+        auditLog.Record(userId!, "Demande en ligne", "Commande", order.Id, $"Demande {order.Number} créée par le client.");
         var staffUsers = (await users.GetUsersInRoleAsync(Roles.Administrator))
             .Concat(await users.GetUsersInRoleAsync(Roles.Operator)).Where(item => item.IsActive).DistinctBy(item => item.Id);
         foreach (var staff in staffUsers)
@@ -253,6 +255,7 @@ public sealed class EspaceClientController(
             LaundryOrderId = id, PreviousStatus = OrderStatus.PendingConfirmation, NewStatus = OrderStatus.Cancelled,
             UserId = userId!, ChangedAtUtc = now, Reason = order.CancellationReason
         });
+        auditLog.Record(userId!, "Annulation client", "Commande", id, order.CancellationReason);
         await database.SaveChangesAsync();
         TempData["RequestSuccess"] = "La demande a été annulée.";
         return RedirectToAction(nameof(Details), new { id });
@@ -322,6 +325,7 @@ public sealed class EspaceClientController(
                 Url = $"/Comptoir/Reclamations/Index", CreatedAtUtc = DateTime.UtcNow
             });
         }
+        auditLog.Record(userId!, "Création", "Réclamation", model.OrderId, $"Réclamation soumise pour {customer.FullName}.");
         await database.SaveChangesAsync();
         TempData["ClaimSuccess"] = "Ta réclamation a été transmise à l’équipe du pressing.";
         return RedirectToAction(nameof(Details), new { id = model.OrderId });

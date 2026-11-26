@@ -18,7 +18,8 @@ public sealed class CompteController(
     RoleManager<IdentityRole> roleManager,
     ApplicationDbContext database,
     SmtpEmailSender emailSender,
-    ILogger<CompteController> logger) : Controller
+    ILogger<CompteController> logger,
+    AuditLogService auditLog) : Controller
 {
     [AllowAnonymous]
     [HttpGet]
@@ -58,10 +59,14 @@ public sealed class CompteController(
             user, model.Password, model.RememberMe, lockoutOnFailure: true);
 
         if (result.Succeeded)
+        {
+            auditLog.Record(user.Id, "Connexion", "Utilisateur", user.Id);
+            await database.SaveChangesAsync();
             return LocalRedirect(model.ReturnUrl ??
                 (await userManager.IsInRoleAsync(user, Roles.Customer)
                     ? Url.Action("Index", "EspaceClient")!
                     : Url.Action("Index", "Home")!));
+        }
 
         ModelState.AddModelError(string.Empty, result.IsLockedOut
             ? "Trop de tentatives. Réessaie dans 15 minutes."
@@ -202,6 +207,8 @@ public sealed class CompteController(
             NormalizedPhone = phone
         });
         await database.SaveChangesAsync();
+        auditLog.Record(user.Id, "Inscription", "Utilisateur", user.Id, "Compte client créé.");
+        await database.SaveChangesAsync();
         await transaction.CommitAsync();
         await SendConfirmationEmailAsync(user);
         return View("ConfirmationEmailEnvoyee");
@@ -228,6 +235,11 @@ public sealed class CompteController(
         var user = await userManager.FindByIdAsync(userId);
         if (user is null) return View("LienConfirmationInvalide");
         var result = await userManager.ConfirmEmailAsync(user, token);
+        if (result.Succeeded)
+        {
+            auditLog.Record(user.Id, "Confirmation d’e-mail", "Utilisateur", user.Id);
+            await database.SaveChangesAsync();
+        }
         return result.Succeeded ? View("AdresseConfirmee") : View("LienConfirmationInvalide");
     }
 
@@ -236,6 +248,12 @@ public sealed class CompteController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Deconnexion()
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            auditLog.Record(userId, "Déconnexion", "Utilisateur", userId);
+            await database.SaveChangesAsync();
+        }
         await signInManager.SignOutAsync();
         return RedirectToAction(nameof(Connexion));
     }

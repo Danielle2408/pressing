@@ -18,7 +18,8 @@ public sealed class CommandesController(
     ApplicationDbContext database,
     IOptions<OrderSettings> orderOptions,
     LoyaltyRewardService loyaltyRewards,
-    PromotionPricingService promotionPricing) : Controller
+    PromotionPricingService promotionPricing,
+    AuditLogService auditLog) : Controller
 {
     private OrderSettings Settings => orderOptions.Value;
 
@@ -171,6 +172,8 @@ public sealed class CommandesController(
         await database.SaveChangesAsync();
         order.Number = $"PR-{now.Year}-{order.Id:D6}";
         await database.SaveChangesAsync();
+        auditLog.Record(userId, "Creation", "Commande", order.Id, $"Commande {order.Number} créée au comptoir.");
+        await database.SaveChangesAsync();
         await transaction.CommitAsync();
 
         if (!string.IsNullOrWhiteSpace(customer.ApplicationUserId))
@@ -277,6 +280,8 @@ public sealed class CommandesController(
                 Url = $"/EspaceClient/Details/{order.Id}", CreatedAtUtc = DateTime.UtcNow
             });
         }
+        auditLog.Record(userId, "Changement de statut", "Commande", order.Id,
+            $"{previousStatus.ToFrench()} vers {status.ToFrench()}.");
         await database.SaveChangesAsync();
 
         TempData["OrderSuccess"] = $"La commande est maintenant au statut « {status.ToFrench()} ».";
@@ -373,6 +378,8 @@ public sealed class CommandesController(
         }
         await database.SaveChangesAsync();
         payment.ReceiptNumber = $"REC-{now.Year}-{payment.Id:D6}";
+        auditLog.Record(userId, "Paiement comptoir", "Paiement", payment.Id,
+            $"{payment.Amount:N0} FCFA, {method.ToFrench()}, commande {order.Number}.");
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
 

@@ -6,12 +6,13 @@ using Pressing.Data;
 using Pressing.Models;
 using Pressing.Security;
 using Pressing.ViewModels;
+using Pressing.Services;
 
 namespace Pressing.Controllers;
 
 [Authorize(Roles = Roles.Administrator + "," + Roles.Operator)]
 [Route("Comptoir/Reclamations/[action]")]
-public sealed class ReclamationsController(ApplicationDbContext database) : Controller
+public sealed class ReclamationsController(ApplicationDbContext database, AuditLogService auditLog) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(ClaimStatus? status)
@@ -65,6 +66,10 @@ public sealed class ReclamationsController(ApplicationDbContext database) : Cont
                 Url = $"/EspaceClient/Details/{claim.LaundryOrderId}", CreatedAtUtc = DateTime.UtcNow
             });
         }
+        var actorId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(actorId)) return Challenge();
+        auditLog.Record(actorId, "Traitement", "Réclamation", claim.Id,
+            $"Statut : {status.ToFrench()}. Décision : {cleanDecision ?? "Aucune note"}.");
         await database.SaveChangesAsync();
         TempData["ClaimSuccess"] = finalDecision ? "La décision a été enregistrée." : "La réclamation est maintenant en cours d’examen.";
         return RedirectToAction(nameof(Index));
