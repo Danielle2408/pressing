@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = Model.Order.Number;
     var order = Model.Order;
+    var due = order.TotalAmount - order.AmountPaid;
+    var pendingOnlinePayment = order.Payments.Any(payment => payment.Method == PaymentMethod.Notchpay && payment.Status == OrderPaymentStatus.Pending);
 }
 
 <section class="py-4">
@@ -72,10 +74,25 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <h2 class="h5">Paiement</h2>
+                    @if (TempData["PaymentError"] is string paymentError)
+                    {
+                        <div class="alert alert-warning mt-3">@paymentError</div>
+                    }
                     <div class="d-flex justify-content-between mt-3"><span class="text-secondary">Total</span><span>@order.TotalAmount.ToString("N0") FCFA</span></div>
                     <div class="d-flex justify-content-between mt-2"><span class="text-secondary">Payé</span><span>@order.AmountPaid.ToString("N0") FCFA</span></div>
                     <hr />
-                    <div class="d-flex justify-content-between fw-semibold"><span>Solde dû</span><span>@((order.TotalAmount - order.AmountPaid).ToString("N0")) FCFA</span></div>
+                    <div class="d-flex justify-content-between fw-semibold"><span>Solde dû</span><span>@due.ToString("N0") FCFA</span></div>
+                    @if (due > 0 && order.Status is not (OrderStatus.Cancelled or OrderStatus.Delivered))
+                    {
+                        @if (pendingOnlinePayment)
+                        {
+                            <p class="small text-secondary mt-3">Un paiement en ligne est en attente. Tu peux reprendre le paiement ci-dessous.</p>
+                        }
+                        <form asp-action="PayerEnLigne" method="post" class="mt-3">
+                            <input type="hidden" name="id" value="@order.Id" />
+                            <button class="btn btn-primary w-100" type="submit">Payer @due.ToString("N0") FCFA avec Notch Pay</button>
+                        </form>
+                    }
                     @if (order.Payments.Count > 0)
                     {
                         <div class="small text-secondary mt-3">@order.Payments.Count paiement(s) enregistré(s).</div>

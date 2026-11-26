@@ -121,13 +121,16 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
         builder.Entity<OrderPayment>(entity =>
         {
-            entity.Property(item => item.ReceiptNumber).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.ReceiptNumber).HasMaxLength(32);
             entity.Property(item => item.Amount).HasPrecision(18, 2);
             entity.Property(item => item.Method).HasConversion<string>().HasMaxLength(24);
             entity.Property(item => item.Status).HasConversion<string>().HasMaxLength(24);
             entity.Property(item => item.Currency).HasMaxLength(3).IsRequired();
             entity.Property(item => item.TransactionReference).HasMaxLength(120);
             entity.Property(item => item.ProviderReference).HasMaxLength(160);
+            entity.Property(item => item.MerchantReference).HasMaxLength(80).IsRequired();
+            entity.Property(item => item.CheckoutUrl).HasMaxLength(2048);
+            entity.HasIndex(item => item.MerchantReference).IsUnique();
             entity.HasIndex(item => item.ReceiptNumber).IsUnique();
             entity.HasIndex(item => new { item.Method, item.TransactionReference })
                 .IsUnique().HasFilter("\"TransactionReference\" IS NOT NULL");

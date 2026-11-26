@@ -274,6 +274,13 @@ public sealed class CommandesController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        if (await database.OrderPayments.AnyAsync(payment => payment.LaundryOrderId == id &&
+                payment.Method == PaymentMethod.Notchpay && payment.Status == OrderPaymentStatus.Pending))
+        {
+            TempData["OrderError"] = "Un paiement Notch Pay est en attente. Vérifie son résultat avant un nouvel encaissement.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         var remaining = order.TotalAmount - order.AmountPaid;
         if (amount > remaining)
         {
@@ -292,6 +299,7 @@ public sealed class CommandesController(
         var payment = new OrderPayment
         {
             ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
+            MerchantReference = $"counter-{Guid.NewGuid():N}",
             LaundryOrderId = id,
             Amount = decimal.Round(amount, 2),
             Method = method,

@@ -23,6 +23,16 @@ Au démarrage, l’application applique les migrations PostgreSQL puis crée les
 
 Pour une base PostgreSQL administrée séparément, définir `ConnectionStrings__Pressing` avant `dotnet run`. La valeur de développement de `appsettings.json` ne doit pas être utilisée en production.
 
+## Paiement en ligne Notch Pay
+
+Le paiement en ligne utilise l’API et la page hébergée Notch Pay. Il n’est confirmé qu’après vérification serveur de la transaction. Configure les variables d’environnement dans l’hébergement (ne mets jamais les clés dans Git) :
+
+- `NotchPay__PublicKey` : clé publique de l’environnement Notch Pay choisi (test ou production).
+- `NotchPay__WebhookHashKey` : clé de signature associée au webhook configuré dans Notch Pay.
+- `NotchPay__CallbackBaseUrl` : adresse HTTPS publique de l’application, sans slash final.
+
+Dans le tableau de bord Notch Pay, configure le webhook sur `https://<domaine-public>/webhooks/notchpay`. La route de retour client est générée par l’application. Une URL locale non accessible depuis Internet ne permet pas de recevoir les notifications en production. Commence avec les clés de test Notch Pay, puis passe aux clés de production seulement lorsque le compte marchand et le déploiement sont prêts.
+
 ## Migrations
 
 Les migrations EF Core sont versionnées dans `Data/Migrations` et appliquées au démarrage.

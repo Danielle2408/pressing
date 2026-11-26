@@ -493,6 +493,10 @@ namespace Pressing.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -508,6 +512,11 @@ namespace Pressing.Data.Migrations
                     b.Property<int>("LaundryOrderId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MerchantReference")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<string>("Method")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -518,7 +527,6 @@ namespace Pressing.Data.Migrations
                         .HasColumnType("character varying(160)");
 
                     b.Property<string>("ReceiptNumber")
-                        .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
@@ -534,6 +542,9 @@ namespace Pressing.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MerchantReference")
+                        .IsUnique();
 
                     b.HasIndex("ProviderReference")
                         .IsUnique()
