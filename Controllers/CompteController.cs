@@ -44,11 +44,18 @@ public sealed class CompteController(
             return View(model);
 
         var identifier = model.Identifier.Trim();
-        var normalizedPhone = NormalizePhone(identifier);
-        var user = identifier.Contains('@')
-            ? await userManager.Users.FirstOrDefaultAsync(candidate =>
-                candidate.NormalizedEmail == userManager.NormalizeEmail(identifier) && candidate.EmailConfirmed)
-            : await userManager.Users.FirstOrDefaultAsync(candidate => candidate.PhoneNumber == normalizedPhone);
+        ApplicationUser? user = null;
+        if (!identifier.Contains('@'))
+        {
+            user = await userManager.FindByNameAsync(identifier);
+            if (user is null)
+            {
+                var nameMatches = await userManager.Users
+                    .Where(candidate => candidate.FullName.ToUpper() == identifier.ToUpper())
+                    .Take(2).ToListAsync();
+                if (nameMatches.Count == 1) user = nameMatches[0];
+            }
+        }
 
         if (user is null || !user.IsActive)
         {
@@ -154,20 +161,19 @@ public sealed class CompteController(
         if (!ModelState.IsValid)
             return View(model);
 
-        var email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim();
-        var phone = NormalizePhone(model.PhoneNumber);
-        if (await userManager.Users.AnyAsync(candidate => candidate.PhoneNumber == phone))
+        var fullName = model.FullName.Trim();
+        if (await userManager.Users.AnyAsync(candidate => candidate.FullName.ToUpper() == fullName.ToUpper()))
         {
-            ModelState.AddModelError(nameof(model.PhoneNumber), "Ce numéro de téléphone est déjà utilisé.");
+            ModelState.AddModelError(nameof(model.FullName), "Ce nom est déjà pris. Utilise un autre nom ou ajoute une initiale.");
             return View(model);
         }
 
         var user = new ApplicationUser
         {
-            UserName = phone,
-            Email = email,
-            PhoneNumber = phone,
-            FullName = model.FullName.Trim()
+            UserName = $"client-{Guid.NewGuid():N}",
+            Email = null,
+            PhoneNumber = null,
+            FullName = fullName
         };
 
         await using var transaction = await database.Database.BeginTransactionAsync();
@@ -202,8 +208,8 @@ public sealed class CompteController(
         {
             ApplicationUserId = user.Id,
             FullName = user.FullName,
-            PhoneNumber = user.PhoneNumber!,
-            NormalizedPhone = phone
+            PhoneNumber = string.Empty,
+            NormalizedPhone = string.Empty
         });
         await database.SaveChangesAsync();
         auditLog.Record(user.Id, "Inscription", "Utilisateur", user.Id, "Compte client créé.");

@@ -9,15 +9,6 @@ public sealed class RegisterViewModel
     [Display(Name = "Nom complet")]
     public string FullName { get; set; } = string.Empty;
 
-    [EmailAddress(ErrorMessage = "Saisis une adresse e-mail valide.")]
-    [Display(Name = "Adresse e-mail (facultatif)")]
-    public string Email { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Le téléphone est obligatoire.")]
-    [Phone(ErrorMessage = "Saisis un numéro de téléphone valide.")]
-    [Display(Name = "Téléphone")]
-    public string PhoneNumber { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "Le mot de passe est obligatoire.")]
     [DataType(DataType.Password)]
     [Display(Name = "Mot de passe")]

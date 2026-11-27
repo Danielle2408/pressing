@@ -429,9 +429,16 @@ public sealed class EspaceClientController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PayerEnLigne(int id, [FromServices] IConfiguration configuration,
+    public async Task<IActionResult> PayerEnLigne(PaymentContactViewModel contact, [FromServices] IConfiguration configuration,
         [FromServices] IHttpClientFactory clients)
     {
+        var id = contact.OrderId;
+        if (!ModelState.IsValid ||
+            (string.IsNullOrWhiteSpace(contact.Email) && string.IsNullOrWhiteSpace(contact.PhoneNumber)))
+        {
+            TempData["PaymentError"] = "Renseigne un e-mail ou un numéro de téléphone valide pour démarrer le paiement.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Challenge();
         var order = await database.LaundryOrders.Include(item => item.Customer)
@@ -494,8 +501,8 @@ public sealed class EspaceClientController(
             request.Headers.TryAddWithoutValidation("Authorization", publicKey);
             request.Content = System.Net.Http.Json.JsonContent.Create(new
             {
-                amount = payment.Amount, currency = "XAF", email = User.Identity?.Name,
-                phone = order.Customer.PhoneNumber, description = $"Commande {order.Number}",
+                amount = payment.Amount, currency = "XAF", email = CleanOptional(contact.Email),
+                phone = CleanOptional(contact.PhoneNumber), description = $"Commande {order.Number}",
                 reference = merchantReference,
                 callback = $"{callbackBaseUrl}/EspaceClient/RetourPaiement"
             });
