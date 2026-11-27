@@ -45,9 +45,10 @@ public sealed class CompteController(
 
         var identifier = model.Identifier.Trim();
         var normalizedPhone = NormalizePhone(identifier);
-        var user = await userManager.FindByEmailAsync(identifier)
-            ?? await userManager.Users.FirstOrDefaultAsync(candidate =>
-                candidate.PhoneNumber == normalizedPhone);
+        var user = identifier.Contains('@')
+            ? await userManager.Users.FirstOrDefaultAsync(candidate =>
+                candidate.NormalizedEmail == userManager.NormalizeEmail(identifier) && candidate.EmailConfirmed)
+            : await userManager.Users.FirstOrDefaultAsync(candidate => candidate.PhoneNumber == normalizedPhone);
 
         if (user is null || !user.IsActive)
         {
@@ -70,8 +71,6 @@ public sealed class CompteController(
 
         ModelState.AddModelError(string.Empty, result.IsLockedOut
             ? "Trop de tentatives. Réessaie dans 15 minutes."
-            : result.IsNotAllowed
-                ? "Confirme ton adresse e-mail avant de te connecter. Tu peux demander un nouvel e-mail de confirmation."
             : "Identifiants incorrects.");
         return View(model);
     }
@@ -87,7 +86,7 @@ public sealed class CompteController(
     {
         if (!ModelState.IsValid) return View(model);
         var user = await userManager.FindByEmailAsync(model.Email.Trim());
-        if (user is not null && user.IsActive && !string.IsNullOrWhiteSpace(user.Email))
+        if (user is not null && user.IsActive && user.EmailConfirmed && !string.IsNullOrWhiteSpace(user.Email))
         {
             try
             {
@@ -155,7 +154,7 @@ public sealed class CompteController(
         if (!ModelState.IsValid)
             return View(model);
 
-        var email = model.Email.Trim();
+        var email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim();
         var phone = NormalizePhone(model.PhoneNumber);
         if (await userManager.Users.AnyAsync(candidate => candidate.PhoneNumber == phone))
         {
@@ -165,7 +164,7 @@ public sealed class CompteController(
 
         var user = new ApplicationUser
         {
-            UserName = email,
+            UserName = phone,
             Email = email,
             PhoneNumber = phone,
             FullName = model.FullName.Trim()
@@ -210,8 +209,8 @@ public sealed class CompteController(
         auditLog.Record(user.Id, "Inscription", "Utilisateur", user.Id, "Compte client créé.");
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
-        var emailSent = await SendConfirmationEmailAsync(user);
-        return View("ConfirmationEmailEnvoyee", new ConfirmationEmailViewModel { EmailSent = emailSent });
+        await signInManager.SignInAsync(user, isPersistent: false);
+        return RedirectToAction("Index", "EspaceClient");
     }
 
     [AllowAnonymous]

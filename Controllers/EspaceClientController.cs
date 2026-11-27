@@ -60,6 +60,7 @@ public sealed class EspaceClientController(
         {
             FullName = customer.FullName, Address = customer.Address,
             Email = user.Email ?? string.Empty, PhoneNumber = customer.PhoneNumber,
+            EmailConfirmed = user.EmailConfirmed,
             ReceiveStatusEmails = customer.ReceiveStatusEmails
         });
     }
@@ -68,7 +69,17 @@ public sealed class EspaceClientController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Profil(CustomerProfileViewModel model)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            var currentUser = await users.GetUserAsync(User);
+            if (currentUser is not null)
+            {
+                model.Email = currentUser.Email ?? string.Empty;
+                model.PhoneNumber = currentUser.PhoneNumber ?? string.Empty;
+                model.EmailConfirmed = currentUser.EmailConfirmed;
+            }
+            return View(model);
+        }
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customer = await database.Customers.FirstOrDefaultAsync(item => item.ApplicationUserId == userId);
         var user = await users.FindByIdAsync(userId ?? string.Empty);
@@ -83,6 +94,7 @@ public sealed class EspaceClientController(
             foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
             model.Email = user.Email ?? string.Empty;
             model.PhoneNumber = customer.PhoneNumber;
+            model.EmailConfirmed = user.EmailConfirmed;
             model.ReceiveStatusEmails = customer.ReceiveStatusEmails;
             return View(model);
         }
