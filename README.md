@@ -39,7 +39,7 @@ La règle d’attribution est configurée par `Loyalty__CurrencyPerPoint` (1 000
 
 ## E-mails de récupération du mot de passe
 
-Configure `Email__Host`, `Email__Port`, `Email__UserName`, `Email__Password` et `Email__FromAddress` dans l’environnement de déploiement pour envoyer les confirmations d’adresse et les liens de réinitialisation via SMTP. Ces valeurs ne doivent pas être ajoutées à Git. Sans configuration SMTP, le formulaire affiche toujours le même message de confirmation, mais aucun e-mail ne peut partir et un nouveau compte ne peut pas se connecter avant confirmation.
+Configure `Email__Host`, `Email__Port`, `Email__UserName`, `Email__Password` et `Email__FromAddress` dans l’environnement de déploiement pour envoyer les confirmations d’adresse et les liens de réinitialisation via SMTP. Ces valeurs ne doivent pas être ajoutées à Git. En développement, l’application lit aussi ces valeurs depuis le fichier `.env` ignoré par Git. Sans configuration SMTP, aucun e-mail ne peut partir et un nouveau compte ne peut pas se connecter avant confirmation.
 
 ## Migrations
 

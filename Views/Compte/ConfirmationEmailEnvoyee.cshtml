@@ -1,9 +1,22 @@
+@model ConfirmationEmailViewModel
 @{
     ViewData["Title"] = "Vérifie ta boîte e-mail";
 }
 
 <div class="row justify-content-center py-5"><div class="col-12 col-md-7 col-lg-5"><div class="card border-0 shadow-sm"><div class="card-body p-4 p-md-5">
-    <h1 class="h3 mb-3">Vérifie ta boîte e-mail</h1><p class="text-secondary">Si cette adresse correspond à une demande valide, un e-mail vient d’être envoyé.</p>
+    <h1 class="h3 mb-3">Vérifie ta boîte e-mail</h1>
+    @if (Model?.EmailSent == false)
+    {
+        <div class="alert alert-warning" role="alert">Le compte a été créé, mais le serveur n’a pas pu envoyer l’e-mail. Vérifie la configuration SMTP locale, puis utilise le lien de renvoi.</div>
+    }
+    else if (Model?.EmailSent == true)
+    {
+        <div class="alert alert-success" role="status">L’e-mail de confirmation a été envoyé. Vérifie aussi le dossier des courriers indésirables.</div>
+    }
+    else
+    {
+        <p class="text-secondary">Si cette adresse correspond à une demande valide, un e-mail vient d’être envoyé. Vérifie aussi le dossier des courriers indésirables.</p>
+    }
     <p class="text-center mt-4 mb-0"><a asp-action="RenvoyerConfirmation">Renvoyer un e-mail de confirmation</a></p>
     <p class="text-center mt-4 mb-0"><a asp-action="Connexion">Retour à la connexion</a></p>
 </div></div></div></div>

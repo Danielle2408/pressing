@@ -210,8 +210,8 @@ public sealed class CompteController(
         auditLog.Record(user.Id, "Inscription", "Utilisateur", user.Id, "Compte client créé.");
         await database.SaveChangesAsync();
         await transaction.CommitAsync();
-        await SendConfirmationEmailAsync(user);
-        return View("ConfirmationEmailEnvoyee");
+        var emailSent = await SendConfirmationEmailAsync(user);
+        return View("ConfirmationEmailEnvoyee", new ConfirmationEmailViewModel { EmailSent = emailSent });
     }
 
     [AllowAnonymous]
@@ -224,7 +224,7 @@ public sealed class CompteController(
             var user = await userManager.FindByEmailAsync(model.Email.Trim());
             if (user is not null && user.IsActive && !user.EmailConfirmed) await SendConfirmationEmailAsync(user);
         }
-        return View("ConfirmationEmailEnvoyee");
+        return View("ConfirmationEmailEnvoyee", new ConfirmationEmailViewModel());
     }
 
     [AllowAnonymous]
@@ -265,21 +265,23 @@ public sealed class CompteController(
     private static string NormalizePhone(string value) =>
         Regex.Replace(value, @"[^0-9+]", string.Empty);
 
-    private async Task SendConfirmationEmailAsync(ApplicationUser user)
+    private async Task<bool> SendConfirmationEmailAsync(ApplicationUser user)
     {
         try
         {
             var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
             var link = Url.Action(nameof(ConfirmerAdresse), "Compte", new { userId = user.Id, token }, Request.Scheme);
-            if (string.IsNullOrWhiteSpace(link) || string.IsNullOrWhiteSpace(user.Email)) return;
+            if (string.IsNullOrWhiteSpace(link) || string.IsNullOrWhiteSpace(user.Email)) return false;
             var safeName = HtmlEncoder.Default.Encode(user.FullName);
             var safeLink = HtmlEncoder.Default.Encode(link);
             await emailSender.SendAsync(user.Email, "Confirme ton adresse e-mail",
                 $"<p>Bonjour {safeName},</p><p>Confirme ton adresse e-mail pour activer ton compte client :</p><p><a href=\"{safeLink}\">Confirmer mon adresse</a></p>");
+            return true;
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Impossible d’envoyer l’e-mail de confirmation au compte {UserId}.", user.Id);
+            return false;
         }
     }
 }

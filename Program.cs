@@ -6,6 +6,31 @@ using Pressing.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// In local development, read ignored .env values for the app as well as Docker Compose.
+// Explicit process environment variables retain precedence over this local file.
+if (builder.Environment.IsDevelopment())
+{
+    var localEnvPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+    if (File.Exists(localEnvPath))
+    {
+        var localValues = new Dictionary<string, string?>();
+        foreach (var line in File.ReadLines(localEnvPath))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0 || trimmed.StartsWith('#')) continue;
+            var separator = trimmed.IndexOf('=');
+            if (separator <= 0) continue;
+            var key = trimmed[..separator].Trim().Replace("__", ":", StringComparison.Ordinal);
+            var value = trimmed[(separator + 1)..].Trim();
+            if (value.Length >= 2 && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\'')))
+                value = value[1..^1];
+            if (string.IsNullOrWhiteSpace(key) || !string.IsNullOrEmpty(builder.Configuration[key])) continue;
+            localValues[key] = value;
+        }
+        builder.Configuration.AddInMemoryCollection(localValues);
+    }
+}
+
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<OrderSettings>(builder.Configuration.GetSection("Ordering"));
 builder.Services.Configure<LoyaltySettings>(builder.Configuration.GetSection("Loyalty"));
